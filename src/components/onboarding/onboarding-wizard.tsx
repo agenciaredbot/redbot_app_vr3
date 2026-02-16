@@ -23,7 +23,7 @@ export function OnboardingWizard() {
       setCurrentStep(currentStep + 1);
     } else {
       // Mark onboarding complete
-      fetch("/api/auth/register", {
+      fetch("/api/organizations", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ onboarding_completed: true }),

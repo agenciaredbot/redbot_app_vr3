@@ -1,0 +1,94 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+export async function GET() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("organization_id, role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) {
+    return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
+  }
+
+  const { data: org, error } = await supabase
+    .from("organizations")
+    .select("*")
+    .eq("id", profile.organization_id)
+    .single();
+
+  if (error || !org) {
+    return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
+  }
+
+  return NextResponse.json({ organization: org });
+}
+
+export async function PUT(request: NextRequest) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("organization_id, role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || profile.role === "org_agent") {
+    return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
+  }
+
+  const body = await request.json();
+
+  const update: Record<string, unknown> = {};
+
+  // Organization info
+  if (body.name !== undefined) update.name = body.name;
+  if (body.city !== undefined) update.city = body.city;
+  if (body.phone !== undefined) update.phone = body.phone;
+  if (body.email !== undefined) update.email = body.email;
+  if (body.description_es !== undefined) update.description = body.description_es ? { es: body.description_es } : null;
+  if (body.primary_color !== undefined) update.primary_color = body.primary_color;
+  if (body.secondary_color !== undefined) update.secondary_color = body.secondary_color;
+
+  // AI Agent config
+  if (body.agent_name !== undefined) update.agent_name = body.agent_name;
+  if (body.agent_personality !== undefined) update.agent_personality = body.agent_personality;
+  if (body.agent_welcome_message_es !== undefined) {
+    update.agent_welcome_message = { es: body.agent_welcome_message_es };
+  }
+  if (body.agent_language !== undefined) update.agent_language = body.agent_language;
+
+  // Onboarding
+  if (body.onboarding_completed !== undefined) update.onboarding_completed = body.onboarding_completed;
+  if (body.onboarding_step !== undefined) update.onboarding_step = body.onboarding_step;
+
+  const { data, error } = await supabase
+    .from("organizations")
+    .update(update)
+    .eq("id", profile.organization_id)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ organization: data });
+}

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { GlassInput, GlassTextarea } from "@/components/ui/glass-input";
-import { GlassButton } from "@/components/ui/glass-button";
+import { GlassInput } from "@/components/ui/glass-input";
 
 export function StepOrgInfo() {
   const [name, setName] = useState("");
@@ -11,14 +10,47 @@ export function StepOrgInfo() {
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-  const handleSave = async () => {
-    setSaving(true);
-    // This would update the organization via an API route
-    // For now we'll just show saved state
-    setSaved(true);
-    setSaving(false);
-  };
+  // Load current org data
+  useEffect(() => {
+    fetch("/api/organizations")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.organization) {
+          const org = data.organization;
+          setName(org.name || "");
+          setCity(org.city || "");
+          setPhone(org.phone || "");
+          setEmail(org.email || "");
+        }
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  // Auto-save on change (debounced)
+  useEffect(() => {
+    if (!loaded) return;
+
+    setSaved(false);
+    const timer = setTimeout(() => {
+      if (name) {
+        setSaving(true);
+        fetch("/api/organizations", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, city, phone, email }),
+        })
+          .then((res) => {
+            if (res.ok) setSaved(true);
+          })
+          .finally(() => setSaving(false));
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [name, city, phone, email, loaded]);
 
   return (
     <div className="space-y-4">
@@ -52,7 +84,10 @@ export function StepOrgInfo() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
-      {saved && (
+      {saving && (
+        <p className="text-xs text-text-muted">Guardando...</p>
+      )}
+      {saved && !saving && (
         <p className="text-xs text-accent-green">
           Información guardada. Puedes continuar al siguiente paso.
         </p>

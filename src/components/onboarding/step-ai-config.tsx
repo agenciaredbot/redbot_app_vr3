@@ -1,12 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GlassInput, GlassTextarea } from "@/components/ui/glass-input";
 
 export function StepAiConfig() {
   const [agentName, setAgentName] = useState("Asistente");
   const [greeting, setGreeting] = useState("");
   const [personality, setPersonality] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load current org AI config
+  useEffect(() => {
+    fetch("/api/organizations")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.organization) {
+          const org = data.organization;
+          setAgentName(org.agent_name || "Asistente");
+          setGreeting(org.agent_welcome_message?.es || "");
+          setPersonality(org.agent_personality || "");
+        }
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  // Auto-save on change (debounced)
+  useEffect(() => {
+    if (!loaded) return;
+
+    setSaved(false);
+    const timer = setTimeout(() => {
+      if (agentName) {
+        setSaving(true);
+        fetch("/api/organizations", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agent_name: agentName,
+            agent_welcome_message_es: greeting || null,
+            agent_personality: personality || null,
+          }),
+        })
+          .then((res) => {
+            if (res.ok) setSaved(true);
+          })
+          .finally(() => setSaving(false));
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [agentName, greeting, personality, loaded]);
 
   return (
     <div className="space-y-4">
@@ -35,6 +81,15 @@ export function StepAiConfig() {
         value={personality}
         onChange={(e) => setPersonality(e.target.value)}
       />
+
+      {saving && (
+        <p className="text-xs text-text-muted">Guardando...</p>
+      )}
+      {saved && !saving && (
+        <p className="text-xs text-accent-green">
+          Configuración del agente guardada.
+        </p>
+      )}
 
       <div className="p-3 rounded-xl bg-accent-cyan/5 border border-accent-cyan/20 text-xs text-text-secondary">
         El agente AI ya viene pre-configurado para búsqueda de propiedades y

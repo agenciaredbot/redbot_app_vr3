@@ -18,26 +18,14 @@ export async function GET(
     return NextResponse.json({ error: "Lead no encontrado" }, { status: 404 });
   }
 
-  // Get conversation messages if there's a conversation
-  let messages = null;
-  if (lead.conversation_id) {
-    const { data: msgs } = await supabase
-      .from("messages")
-      .select("role, content, created_at")
-      .eq("conversation_id", lead.conversation_id)
-      .order("created_at", { ascending: true });
-    messages = msgs;
-  }
-
   // Get tags
   const { data: leadTags } = await supabase
     .from("lead_tags")
-    .select("tag_id, tags(id, name, color, category)")
+    .select("tag_id, tags(id, value, color, category)")
     .eq("lead_id", id);
 
   return NextResponse.json({
     lead,
-    messages,
     tags: leadTags?.map((lt: Record<string, unknown>) => lt.tags) || [],
   });
 }
