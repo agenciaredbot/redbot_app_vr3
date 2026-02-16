@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 interface TenantNavbarProps {
   orgName: string;
@@ -19,11 +20,13 @@ export function TenantNavbar({ orgName, logoUrl }: TenantNavbarProps) {
                 className="h-8 w-auto rounded-lg"
               />
             ) : (
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center">
-                <span className="text-sm font-bold text-white">
-                  {orgName.charAt(0).toUpperCase()}
-                </span>
-              </div>
+              <Image
+                src="/redbot-favicon-96x96.png"
+                alt="Redbot"
+                width={32}
+                height={32}
+                className="rounded-lg"
+              />
             )}
             <span className="text-lg font-semibold text-text-primary">
               {orgName}

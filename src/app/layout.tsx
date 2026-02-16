@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   },
   description:
     "Plataforma de ventas y marketing inmobiliario potenciada por inteligencia artificial.",
+  icons: {
+    icon: "/redbot-favicon-96x96.png",
+    apple: "/redbot-favicon-96x96.png",
+  },
 };
 
 export default async function RootLayout({
