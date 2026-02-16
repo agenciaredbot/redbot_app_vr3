@@ -103,6 +103,59 @@ export async function POST(
   }
 }
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("id, images")
+    .eq("id", id)
+    .single();
+
+  if (!property) {
+    return NextResponse.json({ error: "Propiedad no encontrada" }, { status: 404 });
+  }
+
+  const { images } = await request.json();
+
+  if (!Array.isArray(images)) {
+    return NextResponse.json({ error: "images debe ser un array" }, { status: 400 });
+  }
+
+  // Validate that all URLs in the new order exist in the current images
+  const currentImages = new Set((property.images as string[]) || []);
+  const allValid = images.every((url: string) => currentImages.has(url));
+
+  if (!allValid || images.length !== currentImages.size) {
+    return NextResponse.json(
+      { error: "Las URLs no coinciden con las imágenes actuales" },
+      { status: 400 }
+    );
+  }
+
+  const { error } = await supabase
+    .from("properties")
+    .update({ images })
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ images });
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

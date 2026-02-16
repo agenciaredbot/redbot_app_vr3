@@ -96,14 +96,21 @@ export function PropertyForm({ property }: PropertyFormProps) {
         body: JSON.stringify(data),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const result = await response.json();
         setError(result.error || "Error al guardar");
         setLoading(false);
         return;
       }
 
-      router.push("/admin/properties");
+      if (isEditing) {
+        router.push("/admin/properties");
+      } else {
+        // Redirect to edit page so user can upload images
+        const newId = result.property?.id || result.id;
+        router.push(`/admin/properties/${newId}/edit?new=1`);
+      }
       router.refresh();
     } catch {
       setError("Error de conexión");
