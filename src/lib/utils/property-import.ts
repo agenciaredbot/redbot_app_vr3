@@ -45,6 +45,7 @@ export interface PropertyInsertData {
   commission_value: number | null;
   commission_type: string;
   private_notes: string | null;
+  images: string[];
 }
 
 export interface ColumnMapping {
@@ -257,6 +258,17 @@ const COLUMN_MAP: Record<string, string> = {
   "ano construccion": "year_built",
   "año construccion": "year_built",
   "año de construccion": "year_built",
+
+  // Images
+  fotos: "images",
+  imagenes: "images",
+  "imágenes": "images",
+  images: "images",
+  photos: "images",
+  fotografias: "images",
+  "fotografías": "images",
+  galeria: "images",
+  "galería": "images",
 };
 
 // Common abbreviations in Colombian real estate exports
@@ -517,6 +529,7 @@ export const MAPPABLE_FIELDS: { value: string; label: string }[] = [
   { value: "commission_value", label: "Valor comisión" },
   { value: "commission_type", label: "Tipo comisión" },
   { value: "private_notes", label: "Notas privadas" },
+  { value: "images", label: "Fotos / Imágenes" },
 ];
 
 // ─── Excel Parsing ───────────────────────────────────────────────
@@ -684,6 +697,21 @@ function parseFeatures(value: unknown): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Parse image URLs from a pipe/comma/semicolon/newline-delimited string.
+ * Only keeps valid http(s) URLs.
+ */
+function parseImageUrls(value: unknown): string[] {
+  if (!value) return [];
+  const str = String(value).trim();
+  if (!str) return [];
+
+  return str
+    .split(/[|,;\n]+/)
+    .map((url) => url.trim())
+    .filter((url) => url.startsWith("http://") || url.startsWith("https://"));
+}
+
 // ─── Validation & Transformation ─────────────────────────────────
 
 export function validateAndTransformRows(
@@ -743,6 +771,7 @@ export function validateAndTransformRows(
       private_notes: row.private_notes
         ? String(row.private_notes).trim()
         : null,
+      images: parseImageUrls(row.images),
     };
 
     return {
@@ -825,6 +854,7 @@ export function generateImportPreview(
         area: r.property.built_area_m2 ?? "—",
         hab: r.property.bedrooms,
         banos: r.property.bathrooms,
+        fotos: r.property.images.length,
       };
     }
     return {
@@ -836,6 +866,7 @@ export function generateImportPreview(
       area: "—",
       hab: 0,
       banos: 0,
+      fotos: 0,
       _error: true,
     };
   });

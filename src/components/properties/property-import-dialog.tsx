@@ -420,6 +420,9 @@ export function PropertyImportDialog({
                       <th className="px-3 py-2 text-right text-text-muted font-medium">
                         Baños
                       </th>
+                      <th className="px-3 py-2 text-right text-text-muted font-medium">
+                        Fotos
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -457,6 +460,11 @@ export function PropertyImportDialog({
                           </td>
                           <td className="px-3 py-1.5 text-text-secondary text-right">
                             {String(row.banos)}
+                          </td>
+                          <td className="px-3 py-1.5 text-text-secondary text-right">
+                            {Number(row.fotos) > 0 ? (
+                              <span className="text-accent-green">{String(row.fotos)}</span>
+                            ) : "—"}
                           </td>
                         </tr>
                       );
