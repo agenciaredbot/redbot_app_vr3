@@ -8,7 +8,7 @@ export async function GET() {
     .from("tags")
     .select("*")
     .order("category")
-    .order("name");
+    .order("value");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -21,14 +21,14 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const body = await request.json();
 
-  if (!body.name) {
-    return NextResponse.json({ error: "name requerido" }, { status: 400 });
+  if (!body.value) {
+    return NextResponse.json({ error: "value requerido" }, { status: 400 });
   }
 
   const { data, error } = await supabase
     .from("tags")
     .insert({
-      name: body.name,
+      value: body.value,
       color: body.color || "#6B7280",
       category: body.category || "custom",
       is_system: false,
