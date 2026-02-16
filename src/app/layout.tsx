@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s | Redbot",
   },
   description:
-    "Plataforma de ventas y marketing inmobiliario potenciada por inteligencia artificial.",
+    "Plataforma de ventas y marketing inmobiliario potenciada por inteligencia artificial. Gestiona propiedades, leads y tu agente AI desde un solo lugar.",
   icons: {
     icon: "/redbot-favicon-96x96.png",
     apple: "/redbot-favicon-96x96.png",
