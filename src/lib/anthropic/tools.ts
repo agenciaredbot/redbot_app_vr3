@@ -60,13 +60,13 @@ export const agentTools: Anthropic.Tool[] = [
   {
     name: "register_lead",
     description:
-      "Registra un nuevo lead (contacto interesado). Usa esta herramienta cuando el visitante proporcione su información de contacto o muestre interés real en una propiedad (quiere agendar cita, pide contacto, etc.).",
+      "Registra un nuevo lead (contacto interesado). Usa esta herramienta cuando el visitante proporcione su información de contacto o muestre interés real en una propiedad (quiere agendar cita, pide contacto, etc.). Captura TODA la información disponible de la conversación.",
     input_schema: {
       type: "object" as const,
       properties: {
         name: {
           type: "string",
-          description: "Nombre completo del visitante",
+          description: "Nombre completo del visitante (nombre y apellido)",
         },
         email: {
           type: "string",
@@ -74,12 +74,32 @@ export const agentTools: Anthropic.Tool[] = [
         },
         phone: {
           type: "string",
-          description: "Teléfono del visitante",
+          description: "Teléfono del visitante (con indicativo si lo da)",
+        },
+        budget: {
+          type: "number",
+          description:
+            "Presupuesto aproximado en COP. Convertir a número sin puntos ni separadores (ej: 350000000 para $350.000.000 COP)",
+        },
+        property_summary: {
+          type: "string",
+          description:
+            "Resumen de lo que busca: tipo de propiedad, tamaño, número de habitaciones, características especiales, estilo de vida (ej: 'Apartamento de 3 habitaciones, mínimo 80m², con parqueadero, cerca a colegios')",
+        },
+        preferred_zones: {
+          type: "string",
+          description:
+            "Zonas, barrios o sectores de preferencia separados por coma (ej: 'Chapinero, Usaquén, Cedritos')",
+        },
+        timeline: {
+          type: "string",
+          description:
+            "Urgencia o plazo para la compra/arriendo: 'inmediato', '1-3 meses', '3-6 meses', '6+ meses', 'indefinido'",
         },
         notes: {
           type: "string",
           description:
-            "Notas sobre lo que busca el visitante, preferencias, presupuesto, etc.",
+            "Notas adicionales relevantes: situación financiera, motivación de mudanza, restricciones, cualquier dato útil que no encaje en los otros campos",
         },
         interested_property_id: {
           type: "string",

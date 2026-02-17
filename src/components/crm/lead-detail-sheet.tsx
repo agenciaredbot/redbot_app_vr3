@@ -6,7 +6,7 @@ import { GlassBadge } from "@/components/ui/glass-badge";
 import { GlassButton } from "@/components/ui/glass-button";
 import { GlassSelect } from "@/components/ui/glass-select";
 import { PIPELINE_STAGES } from "@/config/constants";
-import { formatDateTime, formatPipelineStage } from "@/lib/utils/format";
+import { formatDateTime, formatPrice } from "@/lib/utils/format";
 
 interface TagData {
   id: string;
@@ -24,6 +24,10 @@ interface LeadDetail {
     pipeline_stage: string;
     source: string;
     notes: string | null;
+    budget: number | null;
+    property_summary: string | null;
+    preferred_zones: string | null;
+    timeline: string | null;
     created_at: string;
   };
   tags: TagData[];
@@ -273,6 +277,49 @@ export function LeadDetailSheet({
                 onChange={(e) => handleStageChange(e.target.value)}
               />
             </GlassCard>
+
+            {/* Search profile */}
+            {(data.lead.budget || data.lead.property_summary || data.lead.preferred_zones || data.lead.timeline) && (
+              <GlassCard>
+                <h4 className="text-sm font-medium text-text-secondary mb-3">
+                  Perfil de búsqueda
+                </h4>
+                <div className="space-y-2.5 text-sm">
+                  {data.lead.budget && (
+                    <div>
+                      <span className="text-text-muted text-xs">Presupuesto</span>
+                      <p className="text-text-primary font-medium">
+                        {formatPrice(data.lead.budget)}
+                      </p>
+                    </div>
+                  )}
+                  {data.lead.property_summary && (
+                    <div>
+                      <span className="text-text-muted text-xs">Qué busca</span>
+                      <p className="text-text-secondary">
+                        {data.lead.property_summary}
+                      </p>
+                    </div>
+                  )}
+                  {data.lead.preferred_zones && (
+                    <div>
+                      <span className="text-text-muted text-xs">Zonas de interés</span>
+                      <p className="text-text-secondary">
+                        {data.lead.preferred_zones}
+                      </p>
+                    </div>
+                  )}
+                  {data.lead.timeline && (
+                    <div>
+                      <span className="text-text-muted text-xs">Urgencia</span>
+                      <p className="text-text-secondary capitalize">
+                        {data.lead.timeline}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            )}
 
             {/* Tags */}
             <GlassCard>

@@ -62,7 +62,10 @@ export async function PUT(
   if (body.full_name !== undefined) updateData.full_name = body.full_name;
   if (body.email !== undefined) updateData.email = body.email || null;
   if (body.phone !== undefined) updateData.phone = body.phone || null;
-  if (body.temperature !== undefined) updateData.temperature = body.temperature;
+  if (body.budget !== undefined) updateData.budget = body.budget || null;
+  if (body.property_summary !== undefined) updateData.property_summary = body.property_summary || null;
+  if (body.preferred_zones !== undefined) updateData.preferred_zones = body.preferred_zones || null;
+  if (body.timeline !== undefined) updateData.timeline = body.timeline || null;
 
   const { data, error } = await supabase
     .from("leads")

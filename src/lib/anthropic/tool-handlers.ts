@@ -19,6 +19,10 @@ interface RegisterLeadInput {
   name: string;
   email?: string;
   phone?: string;
+  budget?: number;
+  property_summary?: string;
+  preferred_zones?: string;
+  timeline?: string;
   notes?: string;
   interested_property_id?: string;
   tags?: string[];
@@ -195,6 +199,10 @@ async function registerLead(
       full_name: input.name,
       email: input.email || null,
       phone: input.phone || null,
+      budget: input.budget || null,
+      property_summary: input.property_summary || null,
+      preferred_zones: input.preferred_zones || null,
+      timeline: input.timeline || null,
       notes: input.notes || null,
       initial_property_id: input.interested_property_id || null,
       source: "ai_chat",
