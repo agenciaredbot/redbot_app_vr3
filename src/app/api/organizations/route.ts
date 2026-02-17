@@ -1,30 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 
 export async function GET() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("organization_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
-  }
+  const authResult = await getAuthContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
 
   const { data: org, error } = await supabase
     .from("organizations")
     .select("*")
-    .eq("id", profile.organization_id)
+    .eq("id", organizationId)
     .single();
 
   if (error || !org) {
@@ -35,24 +20,11 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("organization_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || profile.role === "org_agent") {
-    return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
-  }
+  const authResult = await getAuthContext({
+    allowedRoles: ["super_admin", "org_admin"],
+  });
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
 
   const body = await request.json();
 
@@ -82,7 +54,7 @@ export async function PUT(request: NextRequest) {
   const { data, error } = await supabase
     .from("organizations")
     .update(update)
-    .eq("id", profile.organization_id)
+    .eq("id", organizationId)
     .select()
     .single();
 

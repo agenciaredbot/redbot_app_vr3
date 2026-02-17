@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PropertyEditWrapper } from "@/components/properties/property-edit-wrapper";
 
@@ -17,10 +17,30 @@ export default async function EditPropertyPage({
   const { new: isNew } = await searchParams;
   const supabase = await createClient();
 
+  // Get authenticated user + org context
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.organization_id) {
+    redirect("/login");
+  }
+
   const { data: property } = await supabase
     .from("properties")
     .select("*")
     .eq("id", id)
+    .eq("organization_id", profile.organization_id)
     .single();
 
   if (!property) {
