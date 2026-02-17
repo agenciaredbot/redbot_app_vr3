@@ -6,10 +6,11 @@ export async function GET() {
   if (authResult instanceof NextResponse) return authResult;
   const { supabase, organizationId } = authResult;
 
+  // Include both org-specific tags AND system tags (organization_id IS NULL)
   const { data, error } = await supabase
     .from("tags")
     .select("*")
-    .eq("organization_id", organizationId)
+    .or(`organization_id.eq.${organizationId},organization_id.is.null`)
     .order("category")
     .order("value");
 

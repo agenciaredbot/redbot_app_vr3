@@ -28,12 +28,12 @@ export async function POST(
     return NextResponse.json({ error: "tag_id requerido" }, { status: 400 });
   }
 
-  // Verify tag belongs to this org
+  // Verify tag belongs to this org or is a system tag
   const { data: tag } = await supabase
     .from("tags")
     .select("id")
     .eq("id", tag_id)
-    .eq("organization_id", organizationId)
+    .or(`organization_id.eq.${organizationId},organization_id.is.null`)
     .single();
 
   if (!tag) {

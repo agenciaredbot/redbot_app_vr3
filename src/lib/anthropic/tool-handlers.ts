@@ -21,6 +21,7 @@ interface RegisterLeadInput {
   phone?: string;
   notes?: string;
   interested_property_id?: string;
+  tags?: string[];
 }
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://redbot.app";
@@ -183,7 +184,7 @@ async function getPropertyDetails(
 async function registerLead(
   input: RegisterLeadInput,
   organizationId: string,
-  conversationId?: string
+  _conversationId?: string
 ): Promise<string> {
   const supabase = createAdminClient();
 
@@ -195,10 +196,9 @@ async function registerLead(
       email: input.email || null,
       phone: input.phone || null,
       notes: input.notes || null,
-      interested_property_id: input.interested_property_id || null,
+      initial_property_id: input.interested_property_id || null,
       source: "ai_chat",
       pipeline_stage: "nuevo",
-      conversation_id: conversationId || null,
     })
     .select("id")
     .single();
@@ -207,8 +207,28 @@ async function registerLead(
     return JSON.stringify({ error: "No se pudo registrar el contacto: " + error.message });
   }
 
+  // Auto-tag the lead with system tags
+  if (data && input.tags && input.tags.length > 0) {
+    const { data: matchedTags } = await supabase
+      .from("tags")
+      .select("id")
+      .in("value", input.tags)
+      .eq("is_system", true);
+
+    if (matchedTags && matchedTags.length > 0) {
+      await supabase.from("lead_tags").insert(
+        matchedTags.map((tag: { id: string }) => ({
+          lead_id: data.id,
+          tag_id: tag.id,
+          assigned_by: "ai_agent",
+        }))
+      );
+    }
+  }
+
+  const tagCount = input.tags?.length || 0;
   return JSON.stringify({
     success: true,
-    message: `Lead registrado exitosamente. ID: ${data.id}`,
+    message: `Lead registrado exitosamente.${tagCount > 0 ? ` ${tagCount} tags asignados.` : ""}`,
   });
 }

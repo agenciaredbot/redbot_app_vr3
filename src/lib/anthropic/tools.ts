@@ -86,6 +86,14 @@ export const agentTools: Anthropic.Tool[] = [
           description:
             "ID de la propiedad en la que está interesado (si aplica)",
         },
+        tags: {
+          type: "array",
+          items: {
+            type: "string",
+          },
+          description:
+            "Tags a asignar al lead según la conversación. Valores válidos: TIPO: comprador, vendedor, arrendatario, inversionista | TEMPERATURA: caliente, tibio, frio | PROPIEDAD: apartamento, casa, local, lote, finca | FINANCIERO: contado, credito-aprobado, credito-en-proceso, sin-verificar",
+        },
       },
       required: ["name"],
     },
