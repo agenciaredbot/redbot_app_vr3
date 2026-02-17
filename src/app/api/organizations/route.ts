@@ -38,6 +38,8 @@ export async function PUT(request: NextRequest) {
   if (body.description_es !== undefined) update.description = body.description_es ? { es: body.description_es } : null;
   if (body.primary_color !== undefined) update.primary_color = body.primary_color;
   if (body.secondary_color !== undefined) update.secondary_color = body.secondary_color;
+  if (body.logo_url !== undefined) update.logo_url = body.logo_url;
+  if (body.favicon_url !== undefined) update.favicon_url = body.favicon_url;
 
   // AI Agent config
   if (body.agent_name !== undefined) update.agent_name = body.agent_name;
