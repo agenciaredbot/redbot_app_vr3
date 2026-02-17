@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 
 export async function GET() {
-  const supabase = await createClient();
+  const authResult = await getAuthContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
 
   const { data, error } = await supabase
     .from("tags")
     .select("*")
+    .eq("organization_id", organizationId)
     .order("category")
     .order("value");
 
@@ -18,7 +21,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
+  const authResult = await getAuthContext({
+    allowedRoles: ["super_admin", "org_admin"],
+  });
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
+
   const body = await request.json();
 
   if (!body.value) {
@@ -28,6 +36,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from("tags")
     .insert({
+      organization_id: organizationId,
       value: body.value,
       color: body.color || "#6B7280",
       category: body.category || "custom",

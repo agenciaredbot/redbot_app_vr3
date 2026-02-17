@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
+  const authResult = await getAuthContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
 
   const { data: lead, error } = await supabase
     .from("leads")
     .select("*")
     .eq("id", id)
+    .eq("organization_id", organizationId)
     .single();
 
   if (error || !lead) {
@@ -35,7 +38,21 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
+  const authResult = await getAuthContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
+
+  // Verify lead belongs to this org before updating
+  const { data: existingLead } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .single();
+
+  if (!existingLead) {
+    return NextResponse.json({ error: "Lead no encontrado" }, { status: 404 });
+  }
 
   const body = await request.json();
 
@@ -51,6 +68,7 @@ export async function PUT(
     .from("leads")
     .update(updateData)
     .eq("id", id)
+    .eq("organization_id", organizationId)
     .select()
     .single();
 

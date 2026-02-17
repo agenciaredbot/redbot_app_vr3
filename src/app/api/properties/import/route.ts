@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 import {
   parseExcelBuffer,
   mapColumns,
@@ -8,32 +9,11 @@ import {
 } from "@/lib/utils/property-import";
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("organization_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || profile.role === "org_agent") {
-    return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
-  }
-
-  const organizationId = profile.organization_id;
-  if (!organizationId) {
-    return NextResponse.json(
-      { error: "No perteneces a una organización" },
-      { status: 400 }
-    );
-  }
+  const authResult = await getAuthContext({
+    allowedRoles: ["super_admin", "org_admin"],
+  });
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
 
   try {
     const contentType = request.headers.get("content-type") || "";

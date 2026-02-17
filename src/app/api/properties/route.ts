@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { generateSlug } from "@/lib/utils/slug";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
+  const authResult = await getAuthContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
+
   const { searchParams } = new URL(request.url);
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -17,6 +20,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("properties")
     .select("*", { count: "exact" })
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -45,25 +49,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-
-  // Get current user's org
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("organization_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || profile.role === "org_agent") {
-    return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
-  }
+  const authResult = await getAuthContext({
+    allowedRoles: ["super_admin", "org_admin"],
+  });
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
 
   const body = await request.json();
 
@@ -72,7 +62,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from("properties")
     .insert({
-      organization_id: profile.organization_id!,
+      organization_id: organizationId,
       title: { es: body.title_es },
       description: body.description_es ? { es: body.description_es } : null,
       slug,

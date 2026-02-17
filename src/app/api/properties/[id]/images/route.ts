@@ -1,25 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
+  const authResult = await getAuthContext({
+    allowedRoles: ["super_admin", "org_admin"],
+  });
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
-
-  // Verify property exists and user has access
+  // Verify property exists AND belongs to this org
   const { data: property } = await supabase
     .from("properties")
     .select("id, organization_id, images")
     .eq("id", id)
+    .eq("organization_id", organizationId)
     .single();
 
   if (!property) {
@@ -60,7 +58,7 @@ export async function POST(
       }
 
       const ext = file.name.split(".").pop() || "jpg";
-      const fileName = `${property.organization_id}/${id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const fileName = `${organizationId}/${id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from("properties")
@@ -87,7 +85,8 @@ export async function POST(
       await supabase
         .from("properties")
         .update({ images: updatedImages })
-        .eq("id", id);
+        .eq("id", id)
+        .eq("organization_id", organizationId);
     }
 
     return NextResponse.json({
@@ -108,19 +107,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
+  const authResult = await getAuthContext({
+    allowedRoles: ["super_admin", "org_admin"],
+  });
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
 
   const { data: property } = await supabase
     .from("properties")
     .select("id, images")
     .eq("id", id)
+    .eq("organization_id", organizationId)
     .single();
 
   if (!property) {
@@ -147,7 +144,8 @@ export async function PUT(
   const { error } = await supabase
     .from("properties")
     .update({ images })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("organization_id", organizationId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -161,19 +159,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
+  const authResult = await getAuthContext({
+    allowedRoles: ["super_admin", "org_admin"],
+  });
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
 
   const { data: property } = await supabase
     .from("properties")
     .select("id, images")
     .eq("id", id)
+    .eq("organization_id", organizationId)
     .single();
 
   if (!property) {
@@ -203,7 +199,8 @@ export async function DELETE(
   await supabase
     .from("properties")
     .update({ images: updatedImages })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("organization_id", organizationId);
 
   return NextResponse.json({ images: updatedImages });
 }

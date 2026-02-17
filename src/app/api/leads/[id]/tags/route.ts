@@ -1,16 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
+  const authResult = await getAuthContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
+
+  // Verify lead belongs to this org
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .single();
+
+  if (!lead) {
+    return NextResponse.json({ error: "Lead no encontrado" }, { status: 404 });
+  }
+
   const { tag_id } = await request.json();
 
   if (!tag_id) {
     return NextResponse.json({ error: "tag_id requerido" }, { status: 400 });
+  }
+
+  // Verify tag belongs to this org
+  const { data: tag } = await supabase
+    .from("tags")
+    .select("id")
+    .eq("id", tag_id)
+    .eq("organization_id", organizationId)
+    .single();
+
+  if (!tag) {
+    return NextResponse.json({ error: "Tag no encontrado" }, { status: 404 });
   }
 
   const { error } = await supabase
@@ -33,7 +60,22 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
+  const authResult = await getAuthContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
+
+  // Verify lead belongs to this org
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .single();
+
+  if (!lead) {
+    return NextResponse.json({ error: "Lead no encontrado" }, { status: 404 });
+  }
+
   const { tag_id } = await request.json();
 
   if (!tag_id) {

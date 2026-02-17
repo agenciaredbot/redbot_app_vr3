@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
+  const authResult = await getAuthContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { supabase, organizationId } = authResult;
+
   const { searchParams } = new URL(request.url);
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -14,6 +17,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("leads")
     .select("*", { count: "exact" })
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 

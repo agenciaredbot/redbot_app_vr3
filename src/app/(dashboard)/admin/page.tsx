@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GlassCard } from "@/components/ui/glass-card";
 
@@ -8,23 +9,48 @@ export const metadata = {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  // Fetch basic stats
+  // Get authenticated user + org context
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.organization_id) {
+    redirect("/login");
+  }
+
+  const organizationId = profile.organization_id;
+
+  // Fetch stats scoped to this organization
   const { count: propertiesCount } = await supabase
     .from("properties")
-    .select("*", { count: "exact", head: true });
+    .select("*", { count: "exact", head: true })
+    .eq("organization_id", organizationId);
 
   const { count: leadsCount } = await supabase
     .from("leads")
-    .select("*", { count: "exact", head: true });
+    .select("*", { count: "exact", head: true })
+    .eq("organization_id", organizationId);
 
   const { count: newLeadsCount } = await supabase
     .from("leads")
     .select("*", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
     .eq("pipeline_stage", "nuevo");
 
   const { count: conversationsCount } = await supabase
     .from("conversations")
     .select("*", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
     .eq("status", "active");
 
   const stats = [

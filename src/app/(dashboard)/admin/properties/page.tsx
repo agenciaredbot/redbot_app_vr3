@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassButton } from "@/components/ui/glass-button";
@@ -18,6 +19,28 @@ export default async function PropertiesPage({
 }) {
   const params = await searchParams;
   const supabase = await createClient();
+
+  // Get authenticated user + org context
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.organization_id) {
+    redirect("/login");
+  }
+
+  const organizationId = profile.organization_id;
+
   const page = parseInt(params.page || "1");
   const limit = 20;
   const offset = (page - 1) * limit;
@@ -25,6 +48,7 @@ export default async function PropertiesPage({
   let query = supabase
     .from("properties")
     .select("*", { count: "exact" })
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
