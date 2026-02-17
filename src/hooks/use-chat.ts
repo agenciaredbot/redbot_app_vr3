@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 export interface ChatMessage {
   id: string;
@@ -13,11 +13,49 @@ interface UseChatOptions {
   organizationSlug: string;
 }
 
+/** Storage key scoped per organization */
+function storageKey(slug: string) {
+  return `redbot-chat-${slug}`;
+}
+
+function loadMessages(slug: string): ChatMessage[] {
+  try {
+    const raw = sessionStorage.getItem(storageKey(slug));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as ChatMessage[];
+    // Strip any leftover streaming flags
+    return parsed.map((m) => ({ ...m, isStreaming: false }));
+  } catch {
+    return [];
+  }
+}
+
+function saveMessages(slug: string, messages: ChatMessage[]) {
+  try {
+    // Only persist completed messages (non-streaming, with content)
+    const toSave = messages
+      .filter((m) => m.content && !m.isStreaming)
+      .map(({ id, role, content }) => ({ id, role, content }));
+    sessionStorage.setItem(storageKey(slug), JSON.stringify(toSave));
+  } catch {
+    // sessionStorage full or unavailable — ignore
+  }
+}
+
 export function useChat({ organizationSlug }: UseChatOptions) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    loadMessages(organizationSlug)
+  );
   const [isStreaming, setIsStreaming] = useState(false);
   const [toolActivity, setToolActivity] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Persist messages to sessionStorage whenever they change
+  useEffect(() => {
+    if (!isStreaming) {
+      saveMessages(organizationSlug, messages);
+    }
+  }, [messages, isStreaming, organizationSlug]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -118,7 +156,8 @@ export function useChat({ organizationSlug }: UseChatOptions) {
                       const updated = [...prev];
                       const last = updated[updated.length - 1];
                       if (last.role === "assistant") {
-                        last.content = data.error || "Error al procesar la respuesta.";
+                        last.content =
+                          data.error || "Error al procesar la respuesta.";
                         last.isStreaming = false;
                       }
                       return updated;
@@ -160,7 +199,12 @@ export function useChat({ organizationSlug }: UseChatOptions) {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
-  }, []);
+    try {
+      sessionStorage.removeItem(storageKey(organizationSlug));
+    } catch {
+      // ignore
+    }
+  }, [organizationSlug]);
 
   return {
     messages,
