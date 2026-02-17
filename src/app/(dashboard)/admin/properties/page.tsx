@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -65,7 +66,9 @@ export default async function PropertiesPage({
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-text-primary">Propiedades</h1>
-        <PropertyActionsBar />
+        <Suspense>
+          <PropertyActionsBar />
+        </Suspense>
       </div>
 
       <GlassCard padding="none">
@@ -84,12 +87,27 @@ export default async function PropertiesPage({
                 d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21"
               />
             </svg>
-            <p className="text-text-secondary mb-4">
-              No hay propiedades registradas
-            </p>
-            <Link href="/admin/properties/new">
-              <GlassButton size="sm">Agregar primera propiedad</GlassButton>
-            </Link>
+            {params.search ? (
+              <>
+                <p className="text-text-secondary mb-2">
+                  No se encontraron propiedades para &quot;{params.search}&quot;
+                </p>
+                <Link href="/admin/properties">
+                  <GlassButton variant="secondary" size="sm">
+                    Limpiar búsqueda
+                  </GlassButton>
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="text-text-secondary mb-4">
+                  No hay propiedades registradas
+                </p>
+                <Link href="/admin/properties/new">
+                  <GlassButton size="sm">Agregar primera propiedad</GlassButton>
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <>
