@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { getPropertyContext } from "@/components/chat/property-context-setter";
 
 export interface ChatMessage {
   id: string;
@@ -88,12 +89,16 @@ export function useChat({ organizationSlug }: UseChatOptions) {
           content: m.content,
         }));
 
+        // Include property context if user is viewing a property page
+        const propertyContext = getPropertyContext();
+
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: apiMessages,
             organizationSlug,
+            ...(propertyContext && { propertyContext }),
           }),
           signal: abortController.signal,
         });

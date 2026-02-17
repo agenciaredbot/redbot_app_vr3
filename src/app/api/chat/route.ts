@@ -11,7 +11,7 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, organizationSlug, conversationId } = body;
+    const { messages, organizationSlug, conversationId, propertyContext } = body;
 
     if (!messages || !organizationSlug) {
       return new Response(
@@ -36,7 +36,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const systemPrompt = buildSystemPrompt(org);
+    let systemPrompt = buildSystemPrompt(org);
+
+    // If user is viewing a specific property, inject context
+    if (propertyContext && propertyContext.title && propertyContext.id) {
+      systemPrompt += `\n\n## Contexto actual
+El visitante está viendo la página de esta propiedad: "${propertyContext.title}" (${propertyContext.propertyType}, ${propertyContext.businessType}, ${propertyContext.price}, ${propertyContext.location}). ID: ${propertyContext.id}.
+Si el visitante pregunta sobre "esta propiedad", "este inmueble", o hace preguntas sin especificar cuál, asume que se refiere a esta propiedad. Usa get_property_details con property_id "${propertyContext.id}" para obtener la información completa. No necesitas buscar — ya sabes de cuál propiedad habla.`;
+    }
+
     const anthropic = getAnthropicClient();
 
     // Convert messages to Anthropic format

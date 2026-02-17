@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PropertyDetail } from "@/components/properties/property-detail";
-import { getI18nText } from "@/lib/utils/format";
+import { PropertyContextSetter } from "@/components/chat/property-context-setter";
+import { getI18nText, formatPrice, formatPropertyType } from "@/lib/utils/format";
 
 interface Props {
   params: Promise<{ slug: string; propertySlug: string }>;
@@ -67,8 +68,26 @@ export default async function PropertyDetailPage({ params }: Props) {
 
   if (!property) notFound();
 
+  const title = getI18nText(property.title);
+  const price =
+    property.business_type === "arriendo"
+      ? formatPrice(property.rent_price, property.currency) + "/mes"
+      : formatPrice(property.sale_price, property.currency);
+  const location = [property.zone, property.city].filter(Boolean).join(", ");
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <PropertyContextSetter
+        context={{
+          id: property.id,
+          title: title || "Propiedad",
+          slug: property.slug,
+          propertyType: formatPropertyType(property.property_type),
+          businessType: property.business_type,
+          price,
+          location,
+        }}
+      />
       <PropertyDetail property={property} />
     </div>
   );
