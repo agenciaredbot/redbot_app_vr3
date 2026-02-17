@@ -23,17 +23,26 @@ interface RegisterLeadInput {
   interested_property_id?: string;
 }
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://redbot.app";
+
+function buildPropertyUrl(orgSlug: string, propertySlug: string): string {
+  // In production: https://orgSlug.redbot.app/propiedades/propertySlug
+  const baseUrl = new URL(APP_URL);
+  return `${baseUrl.protocol}//${orgSlug}.${baseUrl.host}/propiedades/${propertySlug}`;
+}
+
 export async function handleToolCall(
   toolName: string,
   toolInput: Record<string, unknown>,
   organizationId: string,
-  conversationId?: string
+  conversationId?: string,
+  orgSlug?: string
 ): Promise<string> {
   switch (toolName) {
     case "search_properties":
-      return searchProperties(toolInput as unknown as SearchInput, organizationId);
+      return searchProperties(toolInput as unknown as SearchInput, organizationId, orgSlug);
     case "get_property_details":
-      return getPropertyDetails(toolInput as unknown as PropertyDetailsInput, organizationId);
+      return getPropertyDetails(toolInput as unknown as PropertyDetailsInput, organizationId, orgSlug);
     case "register_lead":
       return registerLead(
         toolInput as unknown as RegisterLeadInput,
@@ -47,7 +56,8 @@ export async function handleToolCall(
 
 async function searchProperties(
   input: SearchInput,
-  organizationId: string
+  organizationId: string,
+  orgSlug?: string
 ): Promise<string> {
   const supabase = createAdminClient();
 
@@ -117,6 +127,7 @@ async function searchProperties(
     area: p.built_area_m2 ? formatArea(p.built_area_m2) : null,
     featured: p.is_featured,
     slug: p.slug,
+    url: orgSlug && p.slug ? buildPropertyUrl(orgSlug, p.slug) : null,
   }));
 
   return JSON.stringify({
@@ -127,7 +138,8 @@ async function searchProperties(
 
 async function getPropertyDetails(
   input: PropertyDetailsInput,
-  organizationId: string
+  organizationId: string,
+  orgSlug?: string
 ): Promise<string> {
   const supabase = createAdminClient();
 
@@ -164,6 +176,7 @@ async function getPropertyDetails(
     year_built: data.year_built,
     features: data.features,
     slug: data.slug,
+    url: orgSlug && data.slug ? buildPropertyUrl(orgSlug, data.slug) : null,
   });
 }
 

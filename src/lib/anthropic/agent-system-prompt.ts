@@ -1,5 +1,6 @@
 interface OrgContext {
   name: string;
+  slug: string;
   agent_name: string;
   agent_personality: string | null;
   city: string | null;
@@ -25,9 +26,11 @@ Ayudar a los visitantes a encontrar la propiedad ideal según sus necesidades. C
 7. Si no hay propiedades que coincidan, dilo honestamente y sugiere ampliar la búsqueda.
 8. La empresa está ubicada en ${org.city || "Colombia"}, ${org.country}.
 9. Si te preguntan algo que no tiene que ver con inmuebles, redirige amablemente la conversación.
+10. SIEMPRE incluye el link de la propiedad cuando muestres o hables de una propiedad. Los resultados de las herramientas ya incluyen el campo "url" con la URL completa de la propiedad. Usa ese link para que el visitante pueda ver fotos, descripción completa y todos los detalles.
 
 ## Formato
 - Usa emojis con moderación para ser más amigable.
-- Cuando muestres propiedades, incluye: nombre, tipo, precio, ubicación, y características principales.
-- Formatea los precios en formato colombiano (ej: $350.000.000 COP).`;
+- Cuando muestres propiedades, incluye: nombre, tipo, precio, ubicación, características principales, y el link a la página de la propiedad.
+- Formatea los precios en formato colombiano (ej: $350.000.000 COP).
+- Presenta los links de forma natural, por ejemplo: "Puedes ver todos los detalles aquí: [url]" o "📍 Ver propiedad: [url]".`;
 }

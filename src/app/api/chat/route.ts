@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Get org
     const { data: org } = await supabase
       .from("organizations")
-      .select("id, name, agent_name, agent_personality, city, country")
+      .select("id, name, slug, agent_name, agent_personality, city, country")
       .eq("slug", organizationSlug)
       .single();
 
@@ -129,7 +129,8 @@ export async function POST(request: NextRequest) {
                     block.name,
                     block.input as Record<string, unknown>,
                     org.id,
-                    conversationId
+                    conversationId,
+                    org.slug
                   );
                   toolResults.push({
                     type: "tool_result",
