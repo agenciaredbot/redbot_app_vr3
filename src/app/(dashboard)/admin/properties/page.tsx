@@ -3,10 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassButton } from "@/components/ui/glass-button";
-import { GlassBadge } from "@/components/ui/glass-badge";
 import { PropertyActionsBar } from "@/components/properties/property-actions-bar";
-import { getI18nText, formatPrice, formatPropertyType, formatBusinessType } from "@/lib/utils/format";
-import type { Property } from "@/lib/supabase/types";
+import { PropertiesTable } from "@/components/properties/properties-table";
 
 export const metadata = {
   title: "Propiedades",
@@ -31,7 +29,7 @@ export default async function PropertiesPage({
 
   const { data: profile } = await supabase
     .from("user_profiles")
-    .select("organization_id")
+    .select("organization_id, role")
     .eq("id", user.id)
     .single();
 
@@ -40,6 +38,7 @@ export default async function PropertiesPage({
   }
 
   const organizationId = profile.organization_id;
+  const canBulkAction = ["super_admin", "org_admin"].includes(profile.role);
 
   const page = parseInt(params.page || "1");
   const limit = 20;
@@ -94,92 +93,10 @@ export default async function PropertiesPage({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border-glass">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
-                      Propiedad
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
-                      Tipo
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
-                      Negocio
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
-                      Precio
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
-                      Ciudad
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
-                      Estado
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-text-muted uppercase">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-glass">
-                  {properties.map((prop: Property) => (
-                    <tr
-                      key={prop.id}
-                      className="hover:bg-white/[0.02] transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-text-primary truncate max-w-[250px]">
-                          {getI18nText(prop.title)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-text-secondary">
-                          {formatPropertyType(prop.property_type)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <GlassBadge
-                          color={
-                            prop.business_type === "venta"
-                              ? "#10B981"
-                              : "#3B82F6"
-                          }
-                        >
-                          {formatBusinessType(prop.business_type)}
-                        </GlassBadge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-text-primary">
-                          {prop.business_type === "arriendo"
-                            ? formatPrice(prop.rent_price, prop.currency)
-                            : formatPrice(prop.sale_price, prop.currency)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-text-secondary">
-                          {prop.city || "-"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <GlassBadge
-                          color={prop.is_published ? "#10B981" : "#6B7280"}
-                        >
-                          {prop.is_published ? "Publicado" : "Borrador"}
-                        </GlassBadge>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/admin/properties/${prop.id}/edit`}
-                          className="text-sm text-accent-blue hover:text-accent-blue/80 transition-colors"
-                        >
-                          Editar
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <PropertiesTable
+              properties={properties}
+              canBulkAction={canBulkAction}
+            />
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border-glass">
