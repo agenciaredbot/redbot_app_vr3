@@ -63,6 +63,36 @@ export const CURRENCY_OPTIONS = [
 
 export const STRATUM_OPTIONS = [1, 2, 3, 4, 5, 6];
 
+export const TIMELINE_OPTIONS: { value: string; label: string }[] = [
+  { value: "inmediato", label: "Inmediato" },
+  { value: "1-3 meses", label: "1-3 meses" },
+  { value: "3-6 meses", label: "3-6 meses" },
+  { value: "6+ meses", label: "6+ meses" },
+  { value: "indefinido", label: "Indefinido" },
+];
+
+export const LEAD_SOURCE_OPTIONS: { value: string; label: string }[] = [
+  { value: "manual", label: "Manual" },
+  { value: "chat_ai", label: "Chat AI" },
+  { value: "referido", label: "Referido" },
+  { value: "facebook", label: "Facebook" },
+  { value: "google", label: "Google" },
+  { value: "portal", label: "Portal inmobiliario" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "evento", label: "Evento" },
+];
+
+export const TAG_CATEGORY_LABELS: Record<string, string> = {
+  tipo: "Tipo de cliente",
+  fuente: "Fuente",
+  temperatura: "Temperatura",
+  razon_salida: "Razón de salida",
+  propiedad: "Tipo de propiedad",
+  financiero: "Estado financiero",
+  reactivacion: "Reactivación",
+  custom: "Personalizados",
+};
+
 export const COLOMBIAN_CITIES = [
   "Bogotá",
   "Medellín",

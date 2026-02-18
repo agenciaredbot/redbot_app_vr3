@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { GlassButton } from "@/components/ui/glass-button";
-import { GlassInput } from "@/components/ui/glass-input";
-import { GlassSelect } from "@/components/ui/glass-select";
 import { LeadDetailSheet } from "./lead-detail-sheet";
 import { PIPELINE_STAGES } from "@/config/constants";
 import { formatDate, formatPipelineStage } from "@/lib/utils/format";
+import {
+  type LeadFiltersState,
+  filtersToParams,
+} from "@/lib/types/lead-filters";
 
 interface Lead {
   id: string;
@@ -28,19 +30,20 @@ interface LeadsResponse {
   totalPages: number;
 }
 
-export function LeadTable() {
+interface LeadTableProps {
+  filters: LeadFiltersState;
+}
+
+export function LeadTable({ filters }: LeadTableProps) {
   const [data, setData] = useState<LeadsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page) });
-    if (search) params.set("search", search);
-    if (stageFilter) params.set("stage", stageFilter);
+    const params = filtersToParams(filters, page, 20);
 
     try {
       const res = await fetch(`/api/leads?${params}`);
@@ -51,10 +54,21 @@ export function LeadTable() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, stageFilter]);
+  }, [page, filters]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
 
   useEffect(() => {
-    fetchLeads();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchLeads();
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [fetchLeads]);
 
   const handleStageChange = async (leadId: string, newStage: string) => {
@@ -71,34 +85,6 @@ export function LeadTable() {
 
   return (
     <>
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <div className="flex-1 min-w-[200px]">
-          <GlassInput
-            variant="search"
-            placeholder="Buscar leads..."
-            defaultValue={search}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (e.key === "Enter") {
-                setSearch((e.target as HTMLInputElement).value);
-                setPage(1);
-              }
-            }}
-          />
-        </div>
-        <div className="w-48">
-          <GlassSelect
-            options={PIPELINE_STAGES}
-            placeholder="Todas las etapas"
-            value={stageFilter}
-            onChange={(e) => {
-              setStageFilter(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
-      </div>
-
       {/* Table */}
       <GlassCard padding="none">
         {loading && !data ? (

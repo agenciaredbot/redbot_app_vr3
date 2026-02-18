@@ -15,6 +15,43 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search") || "";
   const offset = (page - 1) * limit;
 
+  // Advanced filter params
+  const tags = searchParams.get("tags") || "";
+  const source = searchParams.get("source") || "";
+  const budgetMin = searchParams.get("budget_min") || "";
+  const budgetMax = searchParams.get("budget_max") || "";
+  const timeline = searchParams.get("timeline") || "";
+  const preferredZones = searchParams.get("preferred_zones") || "";
+  const dateFrom = searchParams.get("date_from") || "";
+  const dateTo = searchParams.get("date_to") || "";
+
+  // If tags filter is active, first find matching lead IDs via lead_tags
+  let tagLeadIds: string[] | null = null;
+  if (tags) {
+    const tagIds = tags.split(",").filter(Boolean);
+    if (tagIds.length > 0) {
+      const { data: tagMatches } = await supabase
+        .from("lead_tags")
+        .select("lead_id")
+        .in("tag_id", tagIds);
+
+      if (tagMatches && tagMatches.length > 0) {
+        // Deduplicate lead IDs
+        tagLeadIds = [
+          ...new Set(tagMatches.map((m: { lead_id: string }) => m.lead_id)),
+        ];
+      } else {
+        // No leads match these tags — return empty result
+        return NextResponse.json({
+          leads: [],
+          total: 0,
+          page,
+          totalPages: 0,
+        });
+      }
+    }
+  }
+
   let query = supabase
     .from("leads")
     .select("*", { count: "exact" })
@@ -22,6 +59,7 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
+  // Basic filters
   if (stage) {
     query = query.eq("pipeline_stage", stage);
   }
@@ -29,6 +67,35 @@ export async function GET(request: NextRequest) {
     query = query.or(
       `full_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
     );
+  }
+
+  // Tag filter: restrict to leads that matched
+  if (tagLeadIds) {
+    query = query.in("id", tagLeadIds);
+  }
+
+  // Advanced field filters
+  if (source) {
+    query = query.eq("source", source);
+  }
+  if (budgetMin) {
+    query = query.gte("budget", parseInt(budgetMin));
+  }
+  if (budgetMax) {
+    query = query.lte("budget", parseInt(budgetMax));
+  }
+  if (timeline) {
+    query = query.eq("timeline", timeline);
+  }
+  if (preferredZones) {
+    query = query.ilike("preferred_zones", `%${preferredZones}%`);
+  }
+  if (dateFrom) {
+    query = query.gte("created_at", dateFrom);
+  }
+  if (dateTo) {
+    // Include the entire end date
+    query = query.lte("created_at", `${dateTo}T23:59:59.999Z`);
   }
 
   const { data, count, error } = await query;

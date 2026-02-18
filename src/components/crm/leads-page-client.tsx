@@ -3,16 +3,29 @@
 import { useState } from "react";
 import { LeadTable } from "./lead-table";
 import { LeadPipelineBoard } from "./lead-pipeline-board";
+import { LeadFilters } from "./lead-filters";
+import { GlassInput } from "@/components/ui/glass-input";
+import { GlassSelect } from "@/components/ui/glass-select";
+import { PIPELINE_STAGES } from "@/config/constants";
+import {
+  type LeadFiltersState,
+  EMPTY_FILTERS,
+} from "@/lib/types/lead-filters";
 
 type ViewMode = "pipeline" | "table";
 
 export function LeadsPageClient() {
   const [view, setView] = useState<ViewMode>("pipeline");
+  const [filters, setFilters] = useState<LeadFiltersState>(EMPTY_FILTERS);
+
+  const handleFiltersChange = (newFilters: LeadFiltersState) => {
+    setFilters(newFilters);
+  };
 
   return (
     <div>
       {/* Header with toggle */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-text-primary">Leads</h1>
 
         {/* View toggle */}
@@ -52,8 +65,47 @@ export function LeadsPageClient() {
         </div>
       </div>
 
+      {/* Shared toolbar: search + stage filter */}
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        <div className="flex-1 min-w-[200px]">
+          <GlassInput
+            variant="search"
+            placeholder="Buscar leads..."
+            defaultValue={filters.search}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === "Enter") {
+                handleFiltersChange({
+                  ...filters,
+                  search: (e.target as HTMLInputElement).value,
+                });
+              }
+            }}
+          />
+        </div>
+        {/* Stage filter only in table view (board shows all stages as columns) */}
+        {view === "table" && (
+          <div className="w-48">
+            <GlassSelect
+              options={PIPELINE_STAGES}
+              placeholder="Todas las etapas"
+              value={filters.stage}
+              onChange={(e) =>
+                handleFiltersChange({ ...filters, stage: e.target.value })
+              }
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Advanced filters */}
+      <LeadFilters filters={filters} onFiltersChange={handleFiltersChange} />
+
       {/* Content */}
-      {view === "pipeline" ? <LeadPipelineBoard /> : <LeadTable />}
+      {view === "pipeline" ? (
+        <LeadPipelineBoard filters={filters} />
+      ) : (
+        <LeadTable filters={filters} />
+      )}
     </div>
   );
 }

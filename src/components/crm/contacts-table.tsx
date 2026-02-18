@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -10,9 +10,15 @@ import { GlassInput, GlassTextarea } from "@/components/ui/glass-input";
 import { GlassSelect } from "@/components/ui/glass-select";
 import { GlassDialog } from "@/components/ui/glass-dialog";
 import { LeadDetailSheet } from "./lead-detail-sheet";
-import { PIPELINE_STAGES } from "@/config/constants";
+import { LeadFilters } from "./lead-filters";
+import { PIPELINE_STAGES, TIMELINE_OPTIONS } from "@/config/constants";
 import { leadCreateSchema, type LeadCreateInput } from "@/lib/validators/lead";
 import { formatDate, formatPipelineStage, formatPrice } from "@/lib/utils/format";
+import {
+  type LeadFiltersState,
+  EMPTY_FILTERS,
+  filtersToParams,
+} from "@/lib/types/lead-filters";
 
 interface Contact {
   id: string;
@@ -40,18 +46,16 @@ export function ContactsTable() {
   const [data, setData] = useState<ContactsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState("");
+  const [filters, setFilters] = useState<LeadFiltersState>(EMPTY_FILTERS);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchContacts = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "25" });
-    if (search) params.set("search", search);
-    if (stageFilter) params.set("stage", stageFilter);
+    const params = filtersToParams(filters, page, 25);
 
     try {
       const res = await fetch(`/api/leads?${params}`);
@@ -62,20 +66,27 @@ export function ContactsTable() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, stageFilter]);
+  }, [page, filters]);
 
   useEffect(() => {
-    fetchContacts();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchContacts();
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [fetchContacts]);
 
+  const handleFiltersChange = (newFilters: LeadFiltersState) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
+
   // --- Add Contact Form ---
-  const TIMELINE_OPTIONS = [
+  const FORM_TIMELINE_OPTIONS = [
     { value: "", label: "Sin definir" },
-    { value: "inmediato", label: "Inmediato" },
-    { value: "1-3 meses", label: "1-3 meses" },
-    { value: "3-6 meses", label: "3-6 meses" },
-    { value: "6+ meses", label: "6+ meses" },
-    { value: "indefinido", label: "Indefinido" },
+    ...TIMELINE_OPTIONS,
   ];
 
   const {
@@ -133,8 +144,9 @@ export function ContactsTable() {
   const handleExport = async (format: "csv" | "xlsx") => {
     setExporting(true);
     try {
-      // Fetch all leads (no pagination)
-      const res = await fetch("/api/leads?limit=1000");
+      // Fetch all matching leads (respecting active filters)
+      const exportParams = filtersToParams(filters, 1, 1000);
+      const res = await fetch(`/api/leads?${exportParams}`);
       const json = await res.json();
       const leads: Contact[] = json.leads || [];
 
@@ -272,16 +284,18 @@ export function ContactsTable() {
   return (
     <>
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-3">
         <div className="flex-1 min-w-[200px]">
           <GlassInput
             variant="search"
             placeholder="Buscar por nombre, email o teléfono..."
-            defaultValue={search}
+            defaultValue={filters.search}
             onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
               if (e.key === "Enter") {
-                setSearch((e.target as HTMLInputElement).value);
-                setPage(1);
+                handleFiltersChange({
+                  ...filters,
+                  search: (e.target as HTMLInputElement).value,
+                });
               }
             }}
           />
@@ -290,10 +304,9 @@ export function ContactsTable() {
           <GlassSelect
             options={PIPELINE_STAGES}
             placeholder="Todas las etapas"
-            value={stageFilter}
+            value={filters.stage}
             onChange={(e) => {
-              setStageFilter(e.target.value);
-              setPage(1);
+              handleFiltersChange({ ...filters, stage: e.target.value });
             }}
           />
         </div>
@@ -340,6 +353,9 @@ export function ContactsTable() {
           </GlassButton>
         </div>
       </div>
+
+      {/* Advanced filters */}
+      <LeadFilters filters={filters} onFiltersChange={handleFiltersChange} />
 
       {/* Table */}
       <GlassCard padding="none">
@@ -607,7 +623,7 @@ export function ContactsTable() {
             />
             <GlassSelect
               label="Urgencia"
-              options={TIMELINE_OPTIONS}
+              options={FORM_TIMELINE_OPTIONS}
               error={errors.timeline?.message}
               {...register("timeline")}
             />

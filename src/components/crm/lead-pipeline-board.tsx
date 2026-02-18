@@ -5,6 +5,10 @@ import { GlassBadge } from "@/components/ui/glass-badge";
 import { LeadDetailSheet } from "./lead-detail-sheet";
 import { PIPELINE_STAGES } from "@/config/constants";
 import { formatPrice } from "@/lib/utils/format";
+import {
+  type LeadFiltersState,
+  filtersToParams,
+} from "@/lib/types/lead-filters";
 
 interface LeadCard {
   id: string;
@@ -22,18 +26,26 @@ interface LeadsByStage {
   [stage: string]: LeadCard[];
 }
 
-export function LeadPipelineBoard() {
+interface LeadPipelineBoardProps {
+  filters: LeadFiltersState;
+}
+
+export function LeadPipelineBoard({ filters }: LeadPipelineBoardProps) {
   const [leadsByStage, setLeadsByStage] = useState<LeadsByStage>({});
   const [loading, setLoading] = useState(true);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [draggedLead, setDraggedLead] = useState<LeadCard | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchLeads = useCallback(async () => {
     try {
-      // Fetch all leads (up to 200 for the board view)
-      const res = await fetch("/api/leads?limit=200");
+      // Build params from filters, but exclude stage (board shows all stages as columns)
+      const boardFilters = { ...filters, stage: "" };
+      const params = filtersToParams(boardFilters, 1, 200);
+
+      const res = await fetch(`/api/leads?${params}`);
       const json = await res.json();
       const leads: LeadCard[] = json.leads || [];
 
@@ -56,10 +68,16 @@ export function LeadPipelineBoard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
-    fetchLeads();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchLeads();
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [fetchLeads]);
 
   // --- Drag & Drop handlers ---
@@ -145,7 +163,7 @@ export function LeadPipelineBoard() {
       <div
         ref={boardRef}
         className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2"
-        style={{ minHeight: "calc(100vh - 220px)" }}
+        style={{ minHeight: "calc(100vh - 280px)" }}
       >
         {PIPELINE_STAGES.map((stage) => {
           const leads = leadsByStage[stage.value] || [];
@@ -184,7 +202,7 @@ export function LeadPipelineBoard() {
               </div>
 
               {/* Cards */}
-              <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-300px)]">
+              <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-360px)]">
                 {leads.length === 0 && (
                   <div
                     className={`
