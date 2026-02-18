@@ -1,0 +1,437 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { GlassCard } from "@/components/ui/glass-card";
+import { GlassBadge } from "@/components/ui/glass-badge";
+import { GlassButton } from "@/components/ui/glass-button";
+import { GlassInput } from "@/components/ui/glass-input";
+import { GlassSelect } from "@/components/ui/glass-select";
+import { LeadDetailSheet } from "./lead-detail-sheet";
+import { PIPELINE_STAGES } from "@/config/constants";
+import { formatDate, formatPipelineStage, formatPrice } from "@/lib/utils/format";
+
+interface Contact {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  pipeline_stage: string;
+  source: string;
+  notes: string | null;
+  budget: number | null;
+  property_summary: string | null;
+  preferred_zones: string | null;
+  timeline: string | null;
+  created_at: string;
+}
+
+interface ContactsResponse {
+  leads: Contact[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export function ContactsTable() {
+  const [data, setData] = useState<ContactsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState("");
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const fetchContacts = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams({ page: String(page), limit: "25" });
+    if (search) params.set("search", search);
+    if (stageFilter) params.set("stage", stageFilter);
+
+    try {
+      const res = await fetch(`/api/leads?${params}`);
+      const json = await res.json();
+      setData(json);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, stageFilter]);
+
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
+
+  // --- Export ---
+  const handleExport = async (format: "csv" | "xlsx") => {
+    setExporting(true);
+    try {
+      // Fetch all leads (no pagination)
+      const res = await fetch("/api/leads?limit=1000");
+      const json = await res.json();
+      const leads: Contact[] = json.leads || [];
+
+      if (leads.length === 0) {
+        setExporting(false);
+        return;
+      }
+
+      if (format === "csv") {
+        exportCSV(leads);
+      } else {
+        await exportXLSX(leads);
+      }
+    } catch {
+      // silent
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportCSV = (leads: Contact[]) => {
+    const headers = [
+      "Nombre",
+      "Email",
+      "Teléfono",
+      "Etapa",
+      "Fuente",
+      "Presupuesto",
+      "Qué busca",
+      "Zonas",
+      "Urgencia",
+      "Notas",
+      "Fecha",
+    ];
+
+    const rows = leads.map((l) => [
+      l.full_name || "",
+      l.email || "",
+      l.phone || "",
+      formatPipelineStage(l.pipeline_stage),
+      l.source || "",
+      l.budget ? String(l.budget) : "",
+      l.property_summary || "",
+      l.preferred_zones || "",
+      l.timeline || "",
+      (l.notes || "").replace(/[\n\r]/g, " "),
+      formatDate(l.created_at),
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    downloadBlob(blob, `contactos-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const exportXLSX = async (leads: Contact[]) => {
+    // Dynamic import to avoid loading xlsx unless needed
+    const XLSX = await import("xlsx");
+
+    const wsData = [
+      [
+        "Nombre",
+        "Email",
+        "Teléfono",
+        "Etapa",
+        "Fuente",
+        "Presupuesto",
+        "Qué busca",
+        "Zonas",
+        "Urgencia",
+        "Notas",
+        "Fecha",
+      ],
+      ...leads.map((l) => [
+        l.full_name || "",
+        l.email || "",
+        l.phone || "",
+        formatPipelineStage(l.pipeline_stage),
+        l.source || "",
+        l.budget || "",
+        l.property_summary || "",
+        l.preferred_zones || "",
+        l.timeline || "",
+        l.notes || "",
+        formatDate(l.created_at),
+      ]),
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Column widths
+    ws["!cols"] = [
+      { wch: 25 }, // Nombre
+      { wch: 30 }, // Email
+      { wch: 15 }, // Teléfono
+      { wch: 15 }, // Etapa
+      { wch: 12 }, // Fuente
+      { wch: 18 }, // Presupuesto
+      { wch: 40 }, // Qué busca
+      { wch: 25 }, // Zonas
+      { wch: 12 }, // Urgencia
+      { wch: 40 }, // Notas
+      { wch: 12 }, // Fecha
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Contactos");
+    XLSX.writeFile(
+      wb,
+      `contactos-${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  };
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const stageColor = (stage: string) =>
+    PIPELINE_STAGES.find((s) => s.value === stage)?.color || "#6B7280";
+
+  return (
+    <>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex-1 min-w-[200px]">
+          <GlassInput
+            variant="search"
+            placeholder="Buscar por nombre, email o teléfono..."
+            defaultValue={search}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === "Enter") {
+                setSearch((e.target as HTMLInputElement).value);
+                setPage(1);
+              }
+            }}
+          />
+        </div>
+        <div className="w-48">
+          <GlassSelect
+            options={PIPELINE_STAGES}
+            placeholder="Todas las etapas"
+            value={stageFilter}
+            onChange={(e) => {
+              setStageFilter(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+
+        {/* Export buttons */}
+        <div className="flex items-center gap-2">
+          <GlassButton
+            variant="secondary"
+            size="sm"
+            onClick={() => handleExport("csv")}
+            disabled={exporting}
+          >
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              CSV
+            </span>
+          </GlassButton>
+          <GlassButton
+            variant="secondary"
+            size="sm"
+            onClick={() => handleExport("xlsx")}
+            disabled={exporting}
+            loading={exporting}
+          >
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Excel
+            </span>
+          </GlassButton>
+        </div>
+      </div>
+
+      {/* Table */}
+      <GlassCard padding="none">
+        {loading && !data ? (
+          <div className="text-center py-16">
+            <div className="w-8 h-8 border-2 border-accent-blue border-t-transparent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : !data?.leads.length ? (
+          <div className="text-center py-16">
+            <svg
+              className="w-16 h-16 mx-auto mb-4 text-text-muted opacity-50"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+            <p className="text-text-secondary">No hay contactos registrados</p>
+            <p className="text-text-muted text-sm mt-1">
+              Los contactos aparecerán aquí cuando se registren leads
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border-glass">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
+                      Nombre
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
+                      Email
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
+                      Teléfono
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
+                      Etapa
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
+                      Presupuesto
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
+                      Qué busca
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
+                      Zonas
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
+                      Urgencia
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase">
+                      Fecha
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-glass">
+                  {data.leads.map((contact) => (
+                    <tr
+                      key={contact.id}
+                      className="hover:bg-white/[0.02] transition-colors cursor-pointer"
+                      onClick={() => setSelectedLeadId(contact.id)}
+                    >
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-accent-cyan hover:underline">
+                          {contact.full_name}
+                        </p>
+                        {contact.source && (
+                          <p className="text-[10px] text-text-muted mt-0.5">
+                            {contact.source}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-text-secondary">
+                          {contact.email || "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-text-secondary">
+                          {contact.phone || "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <GlassBadge color={stageColor(contact.pipeline_stage)}>
+                          {formatPipelineStage(contact.pipeline_stage)}
+                        </GlassBadge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-text-secondary">
+                          {contact.budget
+                            ? formatPrice(contact.budget)
+                            : "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 max-w-[200px]">
+                        <p className="text-xs text-text-muted truncate">
+                          {contact.property_summary || "—"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-text-muted">
+                          {contact.preferred_zones || "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-text-muted capitalize">
+                          {contact.timeline || "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-text-muted whitespace-nowrap">
+                          {formatDate(contact.created_at)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination + count */}
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border-glass">
+              <p className="text-sm text-text-muted">
+                {data.total} contacto{data.total !== 1 ? "s" : ""}{" "}
+                {data.totalPages > 1 && (
+                  <>— Página {data.page} de {data.totalPages}</>
+                )}
+              </p>
+              {data.totalPages > 1 && (
+                <div className="flex gap-2">
+                  {page > 1 && (
+                    <GlassButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setPage(page - 1)}
+                    >
+                      Anterior
+                    </GlassButton>
+                  )}
+                  {page < data.totalPages && (
+                    <GlassButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setPage(page + 1)}
+                    >
+                      Siguiente
+                    </GlassButton>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </GlassCard>
+
+      {/* Detail sheet */}
+      {selectedLeadId && (
+        <LeadDetailSheet
+          leadId={selectedLeadId}
+          onClose={() => setSelectedLeadId(null)}
+          onUpdate={fetchContacts}
+        />
+      )}
+    </>
+  );
+}
