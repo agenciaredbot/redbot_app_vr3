@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { GlassButton } from "@/components/ui/glass-button";
-import { GlassInput } from "@/components/ui/glass-input";
+import { GlassInput, GlassTextarea } from "@/components/ui/glass-input";
 import { GlassSelect } from "@/components/ui/glass-select";
+import { GlassDialog } from "@/components/ui/glass-dialog";
 import { LeadDetailSheet } from "./lead-detail-sheet";
 import { PIPELINE_STAGES } from "@/config/constants";
+import { leadCreateSchema, type LeadCreateInput } from "@/lib/validators/lead";
 import { formatDate, formatPipelineStage, formatPrice } from "@/lib/utils/format";
 
 interface Contact {
@@ -40,6 +44,8 @@ export function ContactsTable() {
   const [stageFilter, setStageFilter] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const fetchContacts = useCallback(async () => {
     setLoading(true);
@@ -61,6 +67,67 @@ export function ContactsTable() {
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
+
+  // --- Add Contact Form ---
+  const TIMELINE_OPTIONS = [
+    { value: "", label: "Sin definir" },
+    { value: "inmediato", label: "Inmediato" },
+    { value: "1-3 meses", label: "1-3 meses" },
+    { value: "3-6 meses", label: "3-6 meses" },
+    { value: "6+ meses", label: "6+ meses" },
+    { value: "indefinido", label: "Indefinido" },
+  ];
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<LeadCreateInput>({
+    resolver: zodResolver(leadCreateSchema),
+    defaultValues: {
+      full_name: "",
+      email: "",
+      phone: "",
+      pipeline_stage: "nuevo",
+      source: "manual",
+      budget: "",
+      property_summary: "",
+      preferred_zones: "",
+      timeline: "",
+      notes: "",
+    },
+  });
+
+  const onAddContact = async (formData: LeadCreateInput) => {
+    setAddError(null);
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        setAddError(json.error || "Error al crear el contacto");
+        return;
+      }
+
+      setShowAddDialog(false);
+      reset();
+      setPage(1);
+      fetchContacts();
+    } catch {
+      setAddError("Error de conexión");
+    }
+  };
+
+  const handleCloseAddDialog = () => {
+    setShowAddDialog(false);
+    setAddError(null);
+    reset();
+  };
 
   // --- Export ---
   const handleExport = async (format: "csv" | "xlsx") => {
@@ -231,8 +298,19 @@ export function ContactsTable() {
           />
         </div>
 
-        {/* Export buttons */}
+        {/* Add contact + Export buttons */}
         <div className="flex items-center gap-2">
+          <GlassButton
+            size="sm"
+            onClick={() => setShowAddDialog(true)}
+          >
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Agregar
+            </span>
+          </GlassButton>
           <GlassButton
             variant="secondary"
             size="sm"
@@ -432,6 +510,118 @@ export function ContactsTable() {
           onUpdate={fetchContacts}
         />
       )}
+
+      {/* Add contact dialog */}
+      <GlassDialog
+        open={showAddDialog}
+        onClose={handleCloseAddDialog}
+        title="Agregar contacto"
+        description="Registra un nuevo contacto manualmente"
+        className="max-w-2xl"
+        actions={
+          <>
+            <GlassButton variant="secondary" onClick={handleCloseAddDialog}>
+              Cancelar
+            </GlassButton>
+            <GlassButton
+              onClick={handleSubmit(onAddContact)}
+              loading={isSubmitting}
+            >
+              Guardar contacto
+            </GlassButton>
+          </>
+        }
+      >
+        <form onSubmit={handleSubmit(onAddContact)} className="space-y-4">
+          {addError && (
+            <div className="px-3 py-2 rounded-lg bg-accent-red/10 border border-accent-red/20 text-sm text-accent-red">
+              {addError}
+            </div>
+          )}
+
+          {/* Row 1: Name + Phone */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <GlassInput
+              label="Nombre completo *"
+              placeholder="Juan Pérez"
+              error={errors.full_name?.message}
+              {...register("full_name")}
+            />
+            <GlassInput
+              label="Teléfono"
+              placeholder="+57 300 123 4567"
+              error={errors.phone?.message}
+              {...register("phone")}
+            />
+          </div>
+
+          {/* Row 2: Email + Source */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <GlassInput
+              label="Email"
+              type="email"
+              placeholder="juan@ejemplo.com"
+              error={errors.email?.message}
+              {...register("email")}
+            />
+            <GlassInput
+              label="Fuente"
+              placeholder="manual, referido, evento..."
+              error={errors.source?.message}
+              {...register("source")}
+            />
+          </div>
+
+          {/* Row 3: Stage + Budget */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <GlassSelect
+              label="Etapa del pipeline"
+              options={PIPELINE_STAGES}
+              error={errors.pipeline_stage?.message}
+              {...register("pipeline_stage")}
+            />
+            <GlassInput
+              label="Presupuesto (COP)"
+              type="number"
+              placeholder="350000000"
+              error={errors.budget?.message}
+              {...register("budget")}
+            />
+          </div>
+
+          {/* Row 4: Property Summary */}
+          <GlassInput
+            label="Qué busca"
+            placeholder="Apartamento 3 habitaciones, mínimo 80m², con parqueadero..."
+            error={errors.property_summary?.message}
+            {...register("property_summary")}
+          />
+
+          {/* Row 5: Zones + Timeline */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <GlassInput
+              label="Zonas de preferencia"
+              placeholder="Chapinero, Usaquén, Cedritos..."
+              error={errors.preferred_zones?.message}
+              {...register("preferred_zones")}
+            />
+            <GlassSelect
+              label="Urgencia"
+              options={TIMELINE_OPTIONS}
+              error={errors.timeline?.message}
+              {...register("timeline")}
+            />
+          </div>
+
+          {/* Row 6: Notes */}
+          <GlassTextarea
+            label="Notas"
+            placeholder="Información adicional sobre este contacto..."
+            error={errors.notes?.message}
+            {...register("notes")}
+          />
+        </form>
+      </GlassDialog>
     </>
   );
 }

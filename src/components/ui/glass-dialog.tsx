@@ -40,11 +40,11 @@ export function GlassDialog({
       onClose={onClose}
       className={`
         backdrop:bg-black/60 backdrop:backdrop-blur-sm
-        bg-transparent p-4 max-w-lg w-full
-        ${className}
+        bg-transparent p-4 w-full
+        ${className || "max-w-lg"}
       `}
     >
-      <div className="bg-bg-secondary/95 backdrop-blur-xl border border-border-glass rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-6">
+      <div className="bg-bg-secondary/95 backdrop-blur-xl border border-border-glass rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-6 max-h-[90vh] overflow-y-auto">
         {title && (
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
