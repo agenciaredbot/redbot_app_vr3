@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type") || "signup";
   const next = searchParams.get("next") ?? "/admin";
 
+  console.log("[auth/callback] Params:", { code: code?.substring(0, 8), token_hash: !!token_hash, type, next });
+
   // Build the redirect URL based on type
   let redirectTo = `${origin}${next}`;
   if (type === "recovery") {
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          console.log("[auth/callback] Setting cookies:", cookiesToSet.map(c => c.name));
           cookiesToSet.forEach(({ name, value, options }) => {
             redirectResponse.cookies.set(name, value, options);
           });
@@ -36,27 +39,35 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  // Try PKCE flow (code exchange) first
-  if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return redirectResponse;
-    }
-    console.error("[auth/callback] Code exchange failed:", error.message);
-  }
-
-  // Fallback: try token hash verification (magic link / OTP flow)
+  // Try token_hash first (from Supabase email links)
   if (token_hash) {
+    const otpType = type === "signup" ? "email" : type;
+    console.log("[auth/callback] Trying verifyOtp with token_hash, type:", otpType);
     const { error } = await supabase.auth.verifyOtp({
       token_hash,
-      type: type as "signup" | "email" | "recovery" | "email_change",
+      type: otpType as "email" | "recovery" | "email_change",
     });
     if (!error) {
+      console.log("[auth/callback] token_hash verification SUCCESS");
       return redirectResponse;
     }
-    console.error("[auth/callback] Token hash verification failed:", error.message);
+    console.error("[auth/callback] token_hash verification failed:", error.message);
   }
 
-  // If neither code nor token_hash, or both failed
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+  // Try code exchange (works for both PKCE and Supabase's email confirmation flow)
+  if (code) {
+    console.log("[auth/callback] Trying exchangeCodeForSession, code length:", code.length);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
+      console.log("[auth/callback] Code exchange SUCCESS");
+      return redirectResponse;
+    }
+    console.error("[auth/callback] Code exchange failed:", error.message, error.status);
+  }
+
+  // Nothing worked
+  console.error("[auth/callback] All strategies failed. code:", !!code, "token_hash:", !!token_hash);
+  const failedUrl = new URL("/login", origin);
+  failedUrl.searchParams.set("error", "auth_callback_failed");
+  return NextResponse.redirect(failedUrl.toString());
 }
