@@ -61,7 +61,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Route: Tenant pages — rewrite to /t/[slug] route group
-  if (subdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/api") && !pathname.startsWith("/login") && !pathname.startsWith("/register") && !pathname.startsWith("/join")) {
+  if (subdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/api") && !pathname.startsWith("/auth") && !pathname.startsWith("/login") && !pathname.startsWith("/register") && !pathname.startsWith("/join") && !pathname.startsWith("/verify-email") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
     const url = request.nextUrl.clone();
     url.pathname = `/t/${subdomain}${pathname}`;
     return NextResponse.rewrite(url, { headers: response.headers });

@@ -32,6 +32,11 @@ export function LoginForm() {
     });
 
     if (authError) {
+      // Supabase returns "Email not confirmed" when verification is pending
+      if (authError.message.toLowerCase().includes("email not confirmed")) {
+        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+        return;
+      }
       setError("Credenciales inválidas. Intenta de nuevo.");
       setLoading(false);
       return;
