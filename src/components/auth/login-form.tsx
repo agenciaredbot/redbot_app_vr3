@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { loginSchema, type LoginInput } from "@/lib/validators/auth";
 import { createClient } from "@/lib/supabase/client";
 
@@ -78,6 +79,15 @@ export function LoginForm() {
             {errors.password.message}
           </p>
         )}
+      </div>
+
+      <div className="flex justify-end">
+        <Link
+          href="/forgot-password"
+          className="text-xs text-accent-blue hover:text-accent-blue/80 transition-colors"
+        >
+          ¿Olvidaste tu contraseña?
+        </Link>
       </div>
 
       <button

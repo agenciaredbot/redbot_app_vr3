@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registerSchema, type RegisterInput } from "@/lib/validators/auth";
-import { createClient } from "@/lib/supabase/client";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -40,23 +39,8 @@ export function RegisterForm() {
         return;
       }
 
-      // Sign in with the newly created credentials
-      const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (signInError) {
-        setError("Cuenta creada. Por favor inicia sesión manualmente.");
-        setLoading(false);
-        router.push("/login");
-        return;
-      }
-
-      // Redirect to onboarding
-      router.push("/admin/onboarding");
-      router.refresh();
+      // Redirect to email verification page
+      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
       setLoading(false);

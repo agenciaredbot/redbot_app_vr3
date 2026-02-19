@@ -33,12 +33,16 @@ export async function POST(request: NextRequest) {
       slug = `${slug}-${Math.random().toString(36).substring(2, 6)}`;
     }
 
-    // Create auth user
+    // Create auth user (email_confirm: false → sends confirmation email)
     const { data: authData, error: authError } =
       await supabase.auth.admin.createUser({
         email,
         password,
-        email_confirm: true,
+        email_confirm: false,
+        user_metadata: {
+          full_name: fullName,
+          organization_name: organizationName,
+        },
       });
 
     if (authError || !authData.user) {
@@ -92,6 +96,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       user: { id: authData.user.id, email },
       organization: { id: org.id, slug: org.slug, name: org.name },
+      needsEmailConfirmation: true,
     });
   } catch {
     return NextResponse.json(
