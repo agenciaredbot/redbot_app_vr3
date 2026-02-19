@@ -811,12 +811,13 @@ export default function LandingMarketingPage() {
                 key={item.title}
                 className="bg-bg-glass backdrop-blur-xl border border-border-glass rounded-2xl overflow-hidden hover:border-border-glass-hover transition-all"
               >
-                <div className="aspect-[4/3] relative">
+                <div className="aspect-[4/3] relative flex items-center justify-center p-6 pb-0">
                   <Image
                     src={item.img}
                     alt={item.title}
-                    fill
-                    className="object-cover"
+                    width={320}
+                    height={240}
+                    className="w-auto h-full max-h-[200px] object-contain drop-shadow-lg"
                   />
                 </div>
                 <div className="p-5 text-center">
