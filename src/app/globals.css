@@ -27,6 +27,7 @@
   /* Fonts */
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
+  --font-heading: var(--font-poppins), var(--font-geist-sans), system-ui, sans-serif;
 
   /* Radius */
   --radius-lg: 16px;

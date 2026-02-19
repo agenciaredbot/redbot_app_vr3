@@ -342,7 +342,7 @@ export default function LandingMarketingPage() {
         <div className="relative max-w-5xl mx-auto text-center">
           <SectionBadge text="Potenciado por Inteligencia Artificial" />
 
-          <h1 className="mt-6 text-4xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight">
+          <h1 className="mt-6 text-4xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight font-[family-name:var(--font-poppins)]">
             <span className="text-text-primary">Multiplica las ventas</span>
             <br />
             <span className="bg-gradient-to-r from-accent-blue via-accent-purple to-accent-cyan bg-clip-text text-transparent">
@@ -464,8 +464,6 @@ export default function LandingMarketingPage() {
             {[
               { src: "/marketing/clients/logo-carvajal.png", alt: "Carvajal" },
               { src: "/marketing/clients/logo-sheraton.png", alt: "Sheraton" },
-              { src: "/marketing/clients/logo-nivea.png", alt: "Nivea" },
-              { src: "/marketing/clients/logo-chivas.png", alt: "Chivas" },
               { src: "/marketing/clients/logo-gogoro.png", alt: "Gogoro" },
               { src: "/marketing/clients/logo-inval.png", alt: "Inval" },
               {
@@ -476,18 +474,14 @@ export default function LandingMarketingPage() {
                 src: "/marketing/clients/logo-expreso-palmira.png",
                 alt: "Expreso Palmira",
               },
-              {
-                src: "/marketing/clients/logo-republica-organica.png",
-                alt: "República Orgánica",
-              },
             ].map((logo) => (
               <Image
                 key={logo.alt}
                 src={logo.src}
                 alt={logo.alt}
-                width={80}
-                height={40}
-                className="h-8 md:h-10 w-auto object-contain grayscale brightness-200"
+                width={140}
+                height={70}
+                className="h-14 md:h-16 w-auto object-contain grayscale brightness-200"
               />
             ))}
           </div>
@@ -499,7 +493,7 @@ export default function LandingMarketingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <SectionBadge text="El problema" />
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary">
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
               ¿Te suena familiar?
             </h2>
           </div>
@@ -577,8 +571,8 @@ export default function LandingMarketingPage() {
       >
         <div className="max-w-5xl mx-auto text-center">
           <SectionBadge text="La solución" />
-          <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary">
-            Conoce Redbot
+          <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
+            Conoce Redbot: Real Estate Direct Bot
           </h2>
           <p className="mt-4 text-lg text-text-secondary max-w-2xl mx-auto">
             Más que un chatbot: un ecosistema completo que conecta tu IA, tu
@@ -641,7 +635,7 @@ export default function LandingMarketingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <SectionBadge text="Funcionalidades" />
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary">
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
               Todo lo que necesitas para vender más
             </h2>
             <p className="mt-4 text-text-secondary max-w-xl mx-auto">
@@ -714,7 +708,7 @@ export default function LandingMarketingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <SectionBadge text="Cómo funciona" />
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary">
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
               Activa tu agente en 3 pasos
             </h2>
           </div>
@@ -785,7 +779,7 @@ export default function LandingMarketingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <SectionBadge text="Resultados" />
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary">
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
               Lo que puedes esperar
             </h2>
           </div>
@@ -847,7 +841,7 @@ export default function LandingMarketingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <SectionBadge text="Planes" />
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary">
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
               Elige el plan para tu inmobiliaria
             </h2>
             <p className="mt-4 text-text-secondary max-w-xl mx-auto">
@@ -970,7 +964,7 @@ export default function LandingMarketingPage() {
             <div className="grid md:grid-cols-2 gap-10 items-center">
               <div>
                 <SectionBadge text="Hecho para Colombia 🇨🇴" />
-                <h2 className="mt-4 text-2xl md:text-3xl font-bold text-text-primary">
+                <h2 className="mt-4 text-2xl md:text-3xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
                   Diseñado para el mercado inmobiliario colombiano
                 </h2>
                 <p className="mt-4 text-text-secondary leading-relaxed">
@@ -1004,7 +998,7 @@ export default function LandingMarketingPage() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-14">
             <SectionBadge text="FAQ" />
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary">
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
               Preguntas frecuentes
             </h2>
           </div>
@@ -1068,7 +1062,7 @@ export default function LandingMarketingPage() {
       {/* ── FINAL CTA ── */}
       <section className="py-20 md:py-28 px-6 border-t border-border-glass">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-bold text-text-primary leading-tight">
+          <h2 className="text-3xl md:text-5xl font-bold text-text-primary leading-tight font-[family-name:var(--font-poppins)]">
             ¿Listo para transformar
             <br />
             <span className="bg-gradient-to-r from-accent-blue via-accent-purple to-accent-cyan bg-clip-text text-transparent">
