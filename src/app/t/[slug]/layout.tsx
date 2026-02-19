@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GradientBackground } from "@/components/ui/gradient-background";
 import { TenantNavbar } from "@/components/layout/tenant-navbar";
 import { TenantFooter } from "@/components/layout/tenant-footer";
 import { ChatWindow } from "@/components/chat/chat-window";
+import { EmbedHider } from "@/components/layout/embed-hider";
 import { getI18nText } from "@/lib/utils/format";
 
 export default async function TenantLayout({
@@ -35,15 +37,22 @@ export default async function TenantLayout({
 
   return (
     <div className="min-h-screen flex flex-col" data-theme={themeMode}>
+      <Suspense fallback={null}>
+        <EmbedHider />
+      </Suspense>
       <GradientBackground themeMode={themeMode} />
-      <TenantNavbar orgName={org.name} logoUrl={displayLogo} />
+      <div data-tenant-branding>
+        <TenantNavbar orgName={org.name} logoUrl={displayLogo} />
+      </div>
       <main className="flex-1">{children}</main>
       <TenantFooter />
-      <ChatWindow
-        organizationSlug={org.slug}
-        agentName={org.agent_name}
-        welcomeMessage={welcomeMessage || undefined}
-      />
+      <div data-tenant-branding>
+        <ChatWindow
+          organizationSlug={org.slug}
+          agentName={org.agent_name}
+          welcomeMessage={welcomeMessage || undefined}
+        />
+      </div>
     </div>
   );
 }

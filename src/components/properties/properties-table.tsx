@@ -290,9 +290,12 @@ export function PropertiesTable({
                   </td>
                 )}
                 <td className="px-4 py-3">
-                  <p className="text-sm font-medium text-text-primary truncate max-w-[250px]">
+                  <Link
+                    href={`/admin/properties/${prop.id}/edit`}
+                    className="text-sm font-medium text-text-primary hover:text-accent-blue truncate max-w-[250px] block transition-colors"
+                  >
                     {getI18nText(prop.title)}
-                  </p>
+                  </Link>
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-sm text-text-secondary">

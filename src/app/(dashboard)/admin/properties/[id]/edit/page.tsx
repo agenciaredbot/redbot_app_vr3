@@ -36,6 +36,13 @@ export default async function EditPropertyPage({
     redirect("/login");
   }
 
+  // Get org slug for property links
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("slug")
+    .eq("id", profile.organization_id)
+    .single();
+
   const { data: property } = await supabase
     .from("properties")
     .select("*")
@@ -64,7 +71,7 @@ export default async function EditPropertyPage({
         </div>
       )}
 
-      <PropertyEditWrapper property={property} />
+      <PropertyEditWrapper property={property} orgSlug={org?.slug || ""} />
     </div>
   );
 }
