@@ -744,14 +744,14 @@ export default function LandingMarketingPage() {
                 key={item.step}
                 className="relative bg-bg-glass backdrop-blur-xl border border-border-glass rounded-2xl overflow-hidden text-center"
               >
-                <div className="aspect-[16/10] relative">
+                <div className="aspect-[16/10] relative flex items-center justify-center p-6 pb-0">
                   <Image
                     src={item.img}
                     alt={item.title}
-                    fill
-                    className="object-cover"
+                    width={280}
+                    height={200}
+                    className="w-auto h-full max-h-[160px] object-contain drop-shadow-lg"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/80 via-bg-primary/20 to-transparent" />
                 </div>
                 <div className="p-6 -mt-8 relative">
                   <div
