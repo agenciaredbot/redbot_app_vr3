@@ -528,16 +528,15 @@ export default function LandingMarketingPage() {
             CRM, tu equipo y tus leads en un solo lugar.
           </p>
 
-          {/* Ecosystem visual */}
-          <div className="mt-10 max-w-3xl mx-auto">
+          {/* Ecosystem visual — reduced 40% */}
+          <div className="mt-10 max-w-md mx-auto">
             <div className="relative rounded-3xl overflow-hidden border border-border-glass">
               <Image
                 src="/marketing/assets/redbot-ecosystem.png"
                 alt="Ecosistema Redbot — IA, CRM, Propiedades, Equipo"
-                width={960}
-                height={540}
+                width={576}
+                height={324}
                 className="w-full h-auto"
-                priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/60 to-transparent" />
             </div>
