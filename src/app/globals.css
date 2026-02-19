@@ -80,3 +80,43 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* ── Float animations for landing page ── */
+@keyframes float-main {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes float-badge-1 {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  33% { transform: translateY(-12px) translateX(4px); }
+  66% { transform: translateY(-6px) translateX(-4px); }
+}
+
+@keyframes float-badge-2 {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  33% { transform: translateY(-8px) translateX(-6px); }
+  66% { transform: translateY(-16px) translateX(3px); }
+}
+
+@keyframes float-badge-3 {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  33% { transform: translateY(-14px) translateX(5px); }
+  66% { transform: translateY(-4px) translateX(-5px); }
+}
+
+.animate-float-main {
+  animation: float-main 6s ease-in-out infinite;
+}
+
+.animate-float-badge-1 {
+  animation: float-badge-1 5s ease-in-out infinite;
+}
+
+.animate-float-badge-2 {
+  animation: float-badge-2 7s ease-in-out infinite;
+}
+
+.animate-float-badge-3 {
+  animation: float-badge-3 6s ease-in-out infinite 0.5s;
+}

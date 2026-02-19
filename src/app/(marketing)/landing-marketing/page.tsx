@@ -283,7 +283,7 @@ export default function LandingMarketingPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/redbot-logo-dark-background.png"
+              src="/redbot-logo-dark background-variant.png"
               alt="Redbot"
               width={120}
               height={34}
@@ -369,6 +369,63 @@ export default function LandingMarketingPage() {
             >
               Ver funcionalidades
             </a>
+          </div>
+
+          {/* Floating hero image with animated badges */}
+          <div className="relative mt-16 max-w-lg mx-auto">
+            {/* Main floating image */}
+            <div className="animate-float-main">
+              <Image
+                src="/marketing/assets/redbot-ecosystem.png"
+                alt="Ecosistema Redbot"
+                width={500}
+                height={500}
+                className="w-full h-auto drop-shadow-2xl"
+                priority
+              />
+            </div>
+
+            {/* Floating badge: 24/7 Disponible — top right */}
+            <div className="absolute top-8 -right-4 md:top-12 md:-right-16 animate-float-badge-1">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-green/10 backdrop-blur-xl border border-accent-green/20 shadow-lg shadow-accent-green/5">
+                <span className="text-sm font-bold text-accent-green">
+                  24/7
+                </span>
+                <span className="text-sm text-text-primary">Disponible</span>
+              </div>
+            </div>
+
+            {/* Floating badge: +35% Conversión — bottom left */}
+            <div className="absolute bottom-16 -left-4 md:bottom-20 md:-left-16 animate-float-badge-2">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-purple/10 backdrop-blur-xl border border-accent-purple/20 shadow-lg shadow-accent-purple/5">
+                <span className="text-sm font-bold text-accent-purple">
+                  +35%
+                </span>
+                <span className="text-sm text-text-primary">Conversión</span>
+              </div>
+            </div>
+
+            {/* Floating badge: Agente Automatizado — bottom right */}
+            <div className="absolute bottom-4 right-0 md:bottom-4 md:-right-12 animate-float-badge-3">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-blue/10 backdrop-blur-xl border border-accent-blue/20 shadow-lg shadow-accent-blue/5">
+                <svg
+                  className="w-4 h-4 text-accent-blue"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+                  />
+                </svg>
+                <span className="text-sm text-text-primary">
+                  Agente Automatizado
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Stats row */}
@@ -527,20 +584,6 @@ export default function LandingMarketingPage() {
             Más que un chatbot: un ecosistema completo que conecta tu IA, tu
             CRM, tu equipo y tus leads en un solo lugar.
           </p>
-
-          {/* Ecosystem visual — reduced 40% */}
-          <div className="mt-10 max-w-md mx-auto">
-            <div className="relative rounded-3xl overflow-hidden border border-border-glass">
-              <Image
-                src="/marketing/assets/redbot-ecosystem.png"
-                alt="Ecosistema Redbot — IA, CRM, Propiedades, Equipo"
-                width={576}
-                height={324}
-                className="w-full h-auto"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/60 to-transparent" />
-            </div>
-          </div>
 
           <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
@@ -1058,7 +1101,7 @@ export default function LandingMarketingPage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
               <Image
-                src="/redbot-logo-dark-background.png"
+                src="/redbot-logo-dark background-variant.png"
                 alt="Redbot"
                 width={100}
                 height={28}
