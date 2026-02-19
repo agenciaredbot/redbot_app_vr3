@@ -6,7 +6,27 @@ export const metadata = {
   title: "Iniciar sesión",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; message?: string }>;
+}) {
+  const params = await searchParams;
+  const errorParam = params.error;
+  const messageParam = params.message;
+
+  const errorMessages: Record<string, string> = {
+    auth_callback_failed: "No pudimos verificar tu cuenta. Intenta iniciar sesión o reenviar el correo de verificación.",
+    email_not_confirmed: "Tu email aún no ha sido confirmado. Revisa tu correo.",
+  };
+
+  const successMessages: Record<string, string> = {
+    email_confirmed: "¡Tu email ha sido verificado! Ya puedes iniciar sesión.",
+  };
+
+  const errorText = errorParam ? (errorMessages[errorParam] || decodeURIComponent(errorParam)) : null;
+  const successText = messageParam ? (successMessages[messageParam] || decodeURIComponent(messageParam)) : null;
+
   return (
     <div className="flex items-center justify-center min-h-screen px-4">
       <div className="w-full max-w-md">
@@ -26,6 +46,18 @@ export default function LoginPage() {
               Ingresa a tu panel de administración
             </p>
           </div>
+
+          {errorText && (
+            <div className="p-3 rounded-xl bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm mb-4">
+              {errorText}
+            </div>
+          )}
+
+          {successText && (
+            <div className="p-3 rounded-xl bg-accent-green/10 border border-accent-green/20 text-accent-green text-sm mb-4">
+              {successText}
+            </div>
+          )}
 
           <LoginForm />
 

@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
             full_name: fullName,
             organization_name: organizationName,
           },
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://redbot.app"}/api/auth/callback?type=signup`,
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://redbot.app"}/api/auth/callback?type=signup&email=${encodeURIComponent(email)}`,
         },
       });
 
