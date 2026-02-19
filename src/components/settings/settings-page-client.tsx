@@ -33,6 +33,7 @@ interface Organization {
 interface SettingsPageClientProps {
   org: Organization;
   canEdit: boolean;
+  userName: string;
 }
 
 function TenantLinkBox({ slug }: { slug: string }) {
@@ -104,7 +105,13 @@ function SaveIndicator({ saving, saved }: { saving: boolean; saved: boolean }) {
   return null;
 }
 
-export function SettingsPageClient({ org, canEdit }: SettingsPageClientProps) {
+export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClientProps) {
+  // --- Profile state ---
+  const [profileName, setProfileName] = useState(userName || "");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
   // --- Branding state ---
   const [logoUrl, setLogoUrl] = useState(org.logo_url);
   const [logoLightUrl, setLogoLightUrl] = useState(org.logo_light_url);
@@ -137,10 +144,35 @@ export function SettingsPageClient({ org, canEdit }: SettingsPageClientProps) {
 
   // Mark loaded on mount (skip initial auto-save)
   useEffect(() => {
+    setProfileLoaded(true);
     setBrandingLoaded(true);
     setInfoLoaded(true);
     setAiLoaded(true);
   }, []);
+
+  // --- Auto-save: Profile name ---
+  useEffect(() => {
+    if (!profileLoaded) return;
+
+    setProfileSaved(false);
+    const timer = setTimeout(() => {
+      const trimmed = profileName.trim();
+      if (trimmed && trimmed.length >= 2) {
+        setProfileSaving(true);
+        fetch("/api/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ full_name: trimmed }),
+        })
+          .then((res) => {
+            if (res.ok) setProfileSaved(true);
+          })
+          .finally(() => setProfileSaving(false));
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [profileName, profileLoaded]);
 
   // --- Auto-save: Branding colors ---
   useEffect(() => {
@@ -233,6 +265,25 @@ export function SettingsPageClient({ org, canEdit }: SettingsPageClientProps) {
   return (
     <div className="max-w-3xl space-y-6">
       <h1 className="text-2xl font-bold text-text-primary">Configuración</h1>
+
+      {/* Section 0: My Profile */}
+      <GlassCard>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-text-primary">
+            Mi perfil
+          </h2>
+          <SaveIndicator saving={profileSaving} saved={profileSaved} />
+        </div>
+        <GlassInput
+          label="Tu nombre"
+          placeholder="Juan Perez"
+          value={profileName}
+          onChange={(e) => setProfileName(e.target.value)}
+        />
+        <p className="text-xs text-text-muted mt-1.5">
+          Este es tu nombre personal que se muestra en el panel.
+        </p>
+      </GlassCard>
 
       {/* Section 1: Branding */}
       <GlassCard>

@@ -17,7 +17,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("user_profiles")
-    .select("organization_id, role")
+    .select("organization_id, role, full_name")
     .eq("id", user.id)
     .single();
 
@@ -35,5 +35,5 @@ export default async function SettingsPage() {
 
   if (!org) redirect("/login");
 
-  return <SettingsPageClient org={org} canEdit={canEdit} />;
+  return <SettingsPageClient org={org} canEdit={canEdit} userName={profile.full_name} />;
 }
