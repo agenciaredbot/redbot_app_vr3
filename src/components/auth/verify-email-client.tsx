@@ -35,7 +35,7 @@ export function VerifyEmailClient({ email }: VerifyEmailClientProps) {
         type: "signup",
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/api/auth/callback?type=signup&email=${encodeURIComponent(email)}`,
+          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
         },
       });
 

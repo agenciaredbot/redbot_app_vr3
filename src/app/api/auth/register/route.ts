@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://redbot.app";
+    console.log("[register] Attempting signUp for:", email, "siteUrl:", siteUrl);
+
     const { data: signUpData, error: signUpError } =
       await authClient.auth.signUp({
         email,
@@ -33,13 +36,30 @@ export async function POST(request: NextRequest) {
             full_name: fullName,
             organization_name: organizationName,
           },
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://redbot.app"}/api/auth/callback?type=signup&email=${encodeURIComponent(email)}`,
+          emailRedirectTo: `${siteUrl}/api/auth/callback`,
         },
       });
+
+    console.log("[register] signUp result:", {
+      userId: signUpData?.user?.id,
+      email: signUpData?.user?.email,
+      confirmed: signUpData?.user?.email_confirmed_at,
+      identities: signUpData?.user?.identities?.length,
+      error: signUpError?.message,
+    });
 
     if (signUpError || !signUpData.user) {
       return NextResponse.json(
         { error: signUpError?.message || "Error al crear usuario" },
+        { status: 400 }
+      );
+    }
+
+    // Check if user already existed (Supabase returns empty identities for duplicate signups)
+    if (signUpData.user.identities && signUpData.user.identities.length === 0) {
+      console.log("[register] User already exists (empty identities):", email);
+      return NextResponse.json(
+        { error: "Ya existe una cuenta con este correo electrónico" },
         { status: 400 }
       );
     }
