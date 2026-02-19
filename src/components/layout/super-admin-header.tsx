@@ -1,14 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 interface SuperAdminHeaderProps {
   userName: string;
   userEmail: string;
+  orgName?: string | null;
 }
 
-export function SuperAdminHeader({ userName, userEmail }: SuperAdminHeaderProps) {
+export function SuperAdminHeader({ userName, userEmail, orgName }: SuperAdminHeaderProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -24,6 +26,20 @@ export function SuperAdminHeader({ userName, userEmail }: SuperAdminHeaderProps)
         <div />
 
         <div className="flex items-center gap-4">
+          {/* Switch to tenant admin panel */}
+          {orgName && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-blue/10 text-accent-blue border border-accent-blue/25 hover:bg-accent-blue/20 transition-colors"
+              title={`Ir al panel de ${orgName}`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 0H21" />
+              </svg>
+              {orgName}
+            </Link>
+          )}
+
           <div className="text-right">
             <div className="flex items-center gap-2 justify-end">
               <p className="text-sm font-medium text-text-primary">{userName}</p>

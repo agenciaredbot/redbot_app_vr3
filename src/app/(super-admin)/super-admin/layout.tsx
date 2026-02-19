@@ -33,6 +33,17 @@ export default async function SuperAdminLayout({
     redirect("/admin");
   }
 
+  // Check if super admin also belongs to an organization (for switch button)
+  let orgName: string | null = null;
+  if (profile.organization_id) {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", profile.organization_id)
+      .single();
+    orgName = org?.name || null;
+  }
+
   return (
     <div className="min-h-screen">
       <GradientBackground />
@@ -41,6 +52,7 @@ export default async function SuperAdminLayout({
         <SuperAdminHeader
           userName={profile.full_name}
           userEmail={profile.email}
+          orgName={orgName}
         />
         <main className="p-6">{children}</main>
       </div>

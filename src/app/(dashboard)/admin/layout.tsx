@@ -42,6 +42,7 @@ export default async function AdminLayout({
         <AdminHeader
           userName={profile.full_name}
           userEmail={profile.email}
+          isSuperAdmin={profile.role === "super_admin"}
         />
         <main className="p-6">{children}</main>
       </div>
