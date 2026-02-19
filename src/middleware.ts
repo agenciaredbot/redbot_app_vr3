@@ -48,6 +48,16 @@ export async function middleware(request: NextRequest) {
     response.headers.set("x-organization-slug", subdomain);
   }
 
+  // Route: Super admin panel — requires auth, no subdomain rewrite
+  if (pathname.startsWith("/super-admin")) {
+    if (!user) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    return response; // No subdomain rewriting for super admin
+  }
+
   // Route: Tenant admin pages require auth
   if (subdomain && pathname.startsWith("/admin")) {
     if (!user) {
@@ -61,7 +71,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Route: Tenant pages — rewrite to /t/[slug] route group
-  if (subdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/api") && !pathname.startsWith("/auth") && !pathname.startsWith("/login") && !pathname.startsWith("/register") && !pathname.startsWith("/join") && !pathname.startsWith("/verify-email") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
+  if (subdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/super-admin") && !pathname.startsWith("/api") && !pathname.startsWith("/auth") && !pathname.startsWith("/login") && !pathname.startsWith("/register") && !pathname.startsWith("/join") && !pathname.startsWith("/verify-email") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
     const url = request.nextUrl.clone();
     url.pathname = `/t/${subdomain}${pathname}`;
     return NextResponse.rewrite(url, { headers: response.headers });
