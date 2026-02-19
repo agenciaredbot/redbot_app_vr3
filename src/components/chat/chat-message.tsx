@@ -103,7 +103,7 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
           ${
             isUser
               ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-br-md"
-              : "bg-white/[0.05] border border-border-glass text-text-primary rounded-bl-md"
+              : "bg-bg-glass border border-border-glass text-text-primary rounded-bl-md"
           }
         `}
       >

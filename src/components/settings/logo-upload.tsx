@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { compressImage } from "@/lib/utils/compress-image";
 
 interface LogoUploadProps {
-  type: "logo" | "favicon";
+  type: "logo" | "favicon" | "logo_light";
   currentUrl: string | null;
   onUploaded: (url: string | null) => void;
   disabled?: boolean;
@@ -24,8 +24,8 @@ export function LogoUpload({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const maxDimension = type === "logo" ? 512 : 256;
-  const previewSize = type === "logo" ? "w-28 h-28" : "w-16 h-16";
+  const maxDimension = type === "favicon" ? 256 : 512;
+  const previewSize = type === "favicon" ? "w-16 h-16" : "w-28 h-28";
 
   const handleUpload = useCallback(
     async (file: File) => {
@@ -96,9 +96,9 @@ export function LogoUpload({
             relative group ${previewSize} rounded-xl overflow-hidden
             border-2 border-dashed border-border-glass
             flex items-center justify-center
-            bg-white/[0.03]
+            bg-bg-glass
             transition-all
-            ${disabled || uploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-accent-blue/50 hover:bg-white/[0.05]"}
+            ${disabled || uploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-accent-blue/50 hover:bg-bg-glass-hover"}
           `}
         >
           {uploading ? (

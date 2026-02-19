@@ -4,9 +4,15 @@ import { getAuthContext } from "@/lib/auth/get-auth-context";
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
 
+const DB_FIELD_MAP: Record<string, string> = {
+  logo: "logo_url",
+  favicon: "favicon_url",
+  logo_light: "logo_light_url",
+};
+
 /**
- * POST /api/organizations/logo — Upload logo or favicon
- * FormData: file (image), type ("logo" | "favicon")
+ * POST /api/organizations/logo — Upload logo, logo_light, or favicon
+ * FormData: file (image), type ("logo" | "favicon" | "logo_light")
  */
 export async function POST(request: NextRequest) {
   const authResult = await getAuthContext({
@@ -23,9 +29,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Archivo requerido" }, { status: 400 });
   }
 
-  if (!imageType || !["logo", "favicon"].includes(imageType)) {
+  if (!imageType || !DB_FIELD_MAP[imageType]) {
     return NextResponse.json(
-      { error: "Tipo inválido. Debe ser 'logo' o 'favicon'" },
+      { error: "Tipo inválido. Debe ser 'logo', 'favicon' o 'logo_light'" },
       { status: 400 }
     );
   }
@@ -45,10 +51,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Get current URL to delete old file if exists
-  const dbField = imageType === "logo" ? "logo_url" : "favicon_url";
+  const dbField = DB_FIELD_MAP[imageType];
   const { data: org } = await supabase
     .from("organizations")
-    .select("logo_url, favicon_url")
+    .select("logo_url, favicon_url, logo_light_url")
     .eq("id", organizationId)
     .single();
 
@@ -110,8 +116,8 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * DELETE /api/organizations/logo — Remove logo or favicon
- * Body: { type: "logo" | "favicon" }
+ * DELETE /api/organizations/logo — Remove logo, logo_light, or favicon
+ * Body: { type: "logo" | "favicon" | "logo_light" }
  */
 export async function DELETE(request: NextRequest) {
   const authResult = await getAuthContext({
@@ -123,19 +129,19 @@ export async function DELETE(request: NextRequest) {
   const body = await request.json();
   const imageType = body.type;
 
-  if (!imageType || !["logo", "favicon"].includes(imageType)) {
+  if (!imageType || !DB_FIELD_MAP[imageType]) {
     return NextResponse.json(
       { error: "Tipo inválido" },
       { status: 400 }
     );
   }
 
-  const dbField = imageType === "logo" ? "logo_url" : "favicon_url";
+  const dbField = DB_FIELD_MAP[imageType];
 
   // Get current URL
   const { data: org } = await supabase
     .from("organizations")
-    .select("logo_url, favicon_url")
+    .select("logo_url, favicon_url, logo_light_url")
     .eq("id", organizationId)
     .single();
 

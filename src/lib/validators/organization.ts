@@ -18,6 +18,8 @@ export const organizationUpdateSchema = z.object({
   name: z.string().min(2).optional(),
   description: z.object({ es: z.string() }).optional(),
   logo_url: z.string().url().optional().nullable(),
+  logo_light_url: z.string().url().optional().nullable(),
+  theme_mode: z.enum(["dark", "light"]).optional(),
   primary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   secondary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   city: z.string().optional(),

@@ -39,7 +39,9 @@ export async function PUT(request: NextRequest) {
   if (body.primary_color !== undefined) update.primary_color = body.primary_color;
   if (body.secondary_color !== undefined) update.secondary_color = body.secondary_color;
   if (body.logo_url !== undefined) update.logo_url = body.logo_url;
+  if (body.logo_light_url !== undefined) update.logo_light_url = body.logo_light_url;
   if (body.favicon_url !== undefined) update.favicon_url = body.favicon_url;
+  if (body.theme_mode !== undefined) update.theme_mode = body.theme_mode;
 
   // AI Agent config
   if (body.agent_name !== undefined) update.agent_name = body.agent_name;

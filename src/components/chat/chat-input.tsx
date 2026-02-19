@@ -33,7 +33,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         }}
         placeholder="Escribe tu mensaje..."
         disabled={disabled}
-        className="flex-1 px-3 py-2 rounded-xl bg-white/[0.05] border border-border-glass text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-blue/50 disabled:opacity-50"
+        className="flex-1 px-3 py-2 rounded-xl bg-bg-glass border border-border-glass text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-blue/50 disabled:opacity-50"
       />
       <button
         onClick={handleSubmit}

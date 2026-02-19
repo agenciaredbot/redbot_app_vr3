@@ -18,7 +18,7 @@ export default async function TenantLayout({
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name, slug, logo_url, primary_color, secondary_color, agent_name, agent_welcome_message")
+    .select("id, name, slug, logo_url, logo_light_url, theme_mode, primary_color, secondary_color, agent_name, agent_welcome_message")
     .eq("slug", slug)
     .single();
 
@@ -27,11 +27,16 @@ export default async function TenantLayout({
   }
 
   const welcomeMessage = getI18nText(org.agent_welcome_message);
+  const themeMode = org.theme_mode || "dark";
+  const displayLogo =
+    themeMode === "light" && org.logo_light_url
+      ? org.logo_light_url
+      : org.logo_url;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <GradientBackground />
-      <TenantNavbar orgName={org.name} logoUrl={org.logo_url} />
+    <div className="min-h-screen flex flex-col" data-theme={themeMode}>
+      <GradientBackground themeMode={themeMode} />
+      <TenantNavbar orgName={org.name} logoUrl={displayLogo} />
       <main className="flex-1">{children}</main>
       <TenantFooter />
       <ChatWindow

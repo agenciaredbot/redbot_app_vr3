@@ -25,7 +25,7 @@ export function ChatHeader({ agentName, onMinimize, onClear }: ChatHeaderProps) 
       <div className="flex items-center gap-1">
         <button
           onClick={onClear}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-secondary transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-bg-glass-hover text-text-muted hover:text-text-secondary transition-colors"
           title="Limpiar chat"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -34,7 +34,7 @@ export function ChatHeader({ agentName, onMinimize, onClear }: ChatHeaderProps) 
         </button>
         <button
           onClick={onMinimize}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-secondary transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-bg-glass-hover text-text-muted hover:text-text-secondary transition-colors"
           title="Minimizar"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

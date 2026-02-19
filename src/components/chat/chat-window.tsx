@@ -66,7 +66,7 @@ export function ChatWindow({
             {/* Welcome message */}
             {messages.length === 0 && (
               <div className="flex justify-start">
-                <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-bl-md text-sm bg-white/[0.05] border border-border-glass text-text-primary">
+                <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-bl-md text-sm bg-bg-glass border border-border-glass text-text-primary">
                   {welcomeMessage ||
                     `Hola, soy ${agentName}. ¿En qué te puedo ayudar hoy? Puedo buscar propiedades, darte detalles y más.`}
                 </div>

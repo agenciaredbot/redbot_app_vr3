@@ -14,7 +14,9 @@ interface Organization {
   phone: string | null;
   email: string | null;
   logo_url: string | null;
+  logo_light_url: string | null;
   favicon_url: string | null;
+  theme_mode: string | null;
   primary_color: string | null;
   secondary_color: string | null;
   agent_name: string | null;
@@ -46,7 +48,11 @@ function SaveIndicator({ saving, saved }: { saving: boolean; saved: boolean }) {
 export function SettingsPageClient({ org, canEdit }: SettingsPageClientProps) {
   // --- Branding state ---
   const [logoUrl, setLogoUrl] = useState(org.logo_url);
+  const [logoLightUrl, setLogoLightUrl] = useState(org.logo_light_url);
   const [faviconUrl, setFaviconUrl] = useState(org.favicon_url);
+  const [themeMode, setThemeMode] = useState<"dark" | "light">(
+    (org.theme_mode as "dark" | "light") || "dark"
+  );
   const [primaryColor, setPrimaryColor] = useState(org.primary_color || "#3B82F6");
   const [secondaryColor, setSecondaryColor] = useState(org.secondary_color || "#8B5CF6");
   const [brandingSaving, setBrandingSaving] = useState(false);
@@ -90,6 +96,7 @@ export function SettingsPageClient({ org, canEdit }: SettingsPageClientProps) {
         body: JSON.stringify({
           primary_color: primaryColor,
           secondary_color: secondaryColor,
+          theme_mode: themeMode,
         }),
       })
         .then((res) => {
@@ -99,7 +106,7 @@ export function SettingsPageClient({ org, canEdit }: SettingsPageClientProps) {
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [primaryColor, secondaryColor, brandingLoaded, canEdit]);
+  }, [primaryColor, secondaryColor, themeMode, brandingLoaded, canEdit]);
 
   // --- Auto-save: Org info ---
   useEffect(() => {
@@ -156,6 +163,10 @@ export function SettingsPageClient({ org, canEdit }: SettingsPageClientProps) {
     setLogoUrl(url);
   }, []);
 
+  const handleLogoLightUploaded = useCallback((url: string | null) => {
+    setLogoLightUrl(url);
+  }, []);
+
   const handleFaviconUploaded = useCallback((url: string | null) => {
     setFaviconUrl(url);
   }, []);
@@ -174,14 +185,64 @@ export function SettingsPageClient({ org, canEdit }: SettingsPageClientProps) {
         </div>
 
         <div className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Theme mode toggle */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Modo de la landing page
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => canEdit && setThemeMode("dark")}
+                disabled={!canEdit}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
+                  themeMode === "dark"
+                    ? "border-accent-blue bg-accent-blue/10 text-accent-blue"
+                    : "border-border-glass text-text-secondary hover:border-border-glass-hover"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                </svg>
+                Oscuro
+              </button>
+              <button
+                type="button"
+                onClick={() => canEdit && setThemeMode("light")}
+                disabled={!canEdit}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
+                  themeMode === "light"
+                    ? "border-accent-blue bg-accent-blue/10 text-accent-blue"
+                    : "border-border-glass text-text-secondary hover:border-border-glass-hover"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                </svg>
+                Claro
+              </button>
+            </div>
+            <p className="text-xs text-text-muted mt-1.5">
+              Define si tu landing page se muestra con fondo oscuro o claro.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <LogoUpload
               type="logo"
               currentUrl={logoUrl}
               onUploaded={handleLogoUploaded}
               disabled={!canEdit}
-              label="Logo"
-              hint="JPG, PNG, WebP o SVG. Máx 2MB. Se redimensiona a 512px."
+              label="Logo (fondo oscuro)"
+              hint="Logo para modo oscuro. JPG, PNG, WebP o SVG. Máx 2MB."
+            />
+            <LogoUpload
+              type="logo_light"
+              currentUrl={logoLightUrl}
+              onUploaded={handleLogoLightUploaded}
+              disabled={!canEdit}
+              label="Logo (fondo claro)"
+              hint="Logo para modo claro. JPG, PNG, WebP o SVG. Máx 2MB."
             />
             <LogoUpload
               type="favicon"
