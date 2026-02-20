@@ -47,8 +47,8 @@ export interface PaymentSourceResult {
 // ============================================================
 
 export interface CreateSubscriptionParams {
-  /** MP card token from frontend SDK tokenization */
-  cardTokenId: string;
+  /** MP card token — omit for hosted checkout (redirect to MP) */
+  cardTokenId?: string;
   /** Payer email — required by MP */
   payerEmail: string;
   /** Plan description (e.g., "Redbot Basic - Mensual") */
@@ -85,6 +85,8 @@ export interface ProviderSubscriptionResult {
   status: ProviderSubscriptionStatus;
   /** Next payment date (ISO string) */
   nextPaymentDate?: string;
+  /** MP hosted checkout URL — redirect user here to complete payment */
+  initPoint?: string;
   /** Raw provider response */
   rawResponse?: Record<string, unknown>;
 }
@@ -95,6 +97,7 @@ export interface ProviderSubscriptionResult {
 
 export type WebhookEventType =
   | "subscription_authorized_payment"
+  | "subscription_preapproval"
   | "payment.approved"
   | "payment.declined"
   | "payment.refunded"
@@ -157,13 +160,10 @@ export interface PaymentProvider {
 export interface SubscribeParams {
   organizationId: string;
   planTier: "basic" | "power" | "omni";
-  /** MP card token from frontend SDK tokenization */
-  cardTokenId: string;
+  /** MP card token — omit for hosted checkout (redirect to MP) */
+  cardTokenId?: string;
   /** Payer email */
   payerEmail: string;
-  /** Card display info from frontend */
-  cardLastFour?: string;
-  cardBrand?: string;
   /** Override the provider (defaults to 'mercadopago') */
   provider?: PaymentProviderName;
 }

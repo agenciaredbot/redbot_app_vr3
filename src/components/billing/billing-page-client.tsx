@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassButton } from "@/components/ui/glass-button";
 import { SubscriptionStatusBadge } from "./subscription-status";
 import { PlanSelector } from "./plan-selector";
-import { PaymentMethodForm } from "./payment-method-form";
 import { InvoiceList } from "./invoice-list";
-import { PLANS, formatPrice } from "@/config/plans";
+import { PLANS } from "@/config/plans";
 import type { PlanTier } from "@/lib/supabase/types";
 import type { BillingCurrency } from "@/lib/billing/types";
 
@@ -33,14 +32,6 @@ interface BillingStatus {
   provider: string;
 }
 
-interface PaymentMethod {
-  id: string;
-  type: string;
-  last_four: string;
-  brand: string;
-  is_default: boolean;
-}
-
 interface Invoice {
   id: string;
   amountCents: number;
@@ -54,56 +45,106 @@ interface Invoice {
 
 export function BillingPageClient() {
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [showAddCard, setShowAddCard] = useState(false);
   const [showPlans, setShowPlans] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  // Holds the selected plan tier when user needs to enter card for subscription
-  const [pendingSubscribeTier, setPendingSubscribeTier] = useState<PlanTier | null>(null);
+  // Shown when user returns from MP checkout — waiting for webhook
+  const [paymentPending, setPaymentPending] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchAll = useCallback(async () => {
     try {
-      const [statusRes, pmRes, invRes] = await Promise.all([
+      const [statusRes, invRes] = await Promise.all([
         fetch("/api/billing/status"),
-        fetch("/api/billing/payment-methods"),
         fetch("/api/billing/invoices"),
       ]);
 
-      const [statusData, pmData, invData] = await Promise.all([
+      const [statusData, invData] = await Promise.all([
         statusRes.json(),
-        pmRes.json(),
         invRes.json(),
       ]);
 
       if (statusRes.ok) setBillingStatus(statusData);
-      if (pmRes.ok) setPaymentMethods(pmData.paymentMethods || []);
       if (invRes.ok) setInvoices(invData.invoices || []);
+
+      return statusData;
     } catch {
       setError("Error al cargar información de facturación");
+      return null;
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Handle return from Mercado Pago checkout
   useEffect(() => {
-    fetchAll();
+    const params = new URLSearchParams(window.location.search);
+    const preapprovalId = params.get("preapproval_id");
+
+    if (preapprovalId) {
+      // Clean URL params
+      window.history.replaceState({}, "", window.location.pathname);
+      setPaymentPending(true);
+
+      // Poll billing status until subscription activates
+      const poll = async () => {
+        const data = await fetchAll();
+        if (
+          data?.subscription?.status &&
+          data.subscription.status !== "pending"
+        ) {
+          // Subscription activated!
+          setPaymentPending(false);
+          setSuccess("¡Suscripción activada! Tu plan está listo.");
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+        }
+      };
+
+      // Initial check + poll every 3 seconds
+      poll();
+      pollingRef.current = setInterval(poll, 3000);
+
+      // Stop polling after 60 seconds max
+      setTimeout(() => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+          setPaymentPending(false);
+          setSuccess(
+            "Tu pago está siendo procesado. La suscripción se activará en unos momentos."
+          );
+        }
+      }, 60000);
+    } else {
+      fetchAll();
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
   }, [fetchAll]);
 
   /**
-   * Subscribe flow:
-   * 1. User selects a plan → handleSubscribe(tier)
-   * 2. If already subscribed with active sub → change plan via API
-   * 3. If not subscribed → show card form (tokenize + subscribe in one step)
+   * Subscribe flow (hosted checkout):
+   * 1. User selects plan
+   * 2. If already subscribed → change plan via API
+   * 3. If not subscribed → redirect to Mercado Pago checkout
    */
   const handleSubscribe = async (tier: PlanTier) => {
-    const isChangePlan = billingStatus?.subscription?.status === "active";
+    const isChangePlan =
+      billingStatus?.subscription?.status === "active" ||
+      billingStatus?.subscription?.status === "trialing";
 
     if (isChangePlan) {
-      // Change plan — no new card needed, just API call
+      // Change plan — no payment needed, just API call
       setActionLoading(true);
       setError(null);
 
@@ -115,10 +156,7 @@ export function BillingPageClient() {
         });
 
         const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error);
-        }
+        if (!res.ok) throw new Error(data.error);
 
         setSuccess(`Plan cambiado a ${PLANS[tier].name}`);
         setShowPlans(false);
@@ -129,60 +167,51 @@ export function BillingPageClient() {
         setActionLoading(false);
       }
     } else {
-      // New subscription — show card form for tokenization + subscribe
-      setPendingSubscribeTier(tier);
-      setShowAddCard(true);
-    }
-  };
+      // New subscription — redirect to Mercado Pago
+      setActionLoading(true);
+      setError(null);
 
-  /**
-   * Called by PaymentMethodForm after successful tokenization.
-   * Sends the token to /api/billing/subscribe to create the MP subscription.
-   */
-  const handleTokenized = async (data: {
-    cardTokenId: string;
-    payerEmail: string;
-    cardLastFour: string;
-    cardBrand: string;
-  }) => {
-    if (!pendingSubscribeTier) return;
+      try {
+        // Get user email from billing status or org
+        const userEmail =
+          billingStatus?.plan?.tier
+            ? (await fetch("/api/billing/status").then((r) => r.json()))
+                ?.userEmail
+            : undefined;
 
-    setActionLoading(true);
-    setError(null);
+        const res = await fetch("/api/billing/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            planTier: tier,
+            payerEmail: userEmail || "billing@redbot.app",
+          }),
+        });
 
-    try {
-      const res = await fetch("/api/billing/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          planTier: pendingSubscribeTier,
-          cardTokenId: data.cardTokenId,
-          payerEmail: data.payerEmail,
-          cardLastFour: data.cardLastFour,
-          cardBrand: data.cardBrand,
-        }),
-      });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
 
-      const result = await res.json();
+        if (data.initPoint) {
+          // Redirect to Mercado Pago hosted checkout
+          window.location.href = data.initPoint;
+          return; // Page will navigate away
+        }
 
-      if (!res.ok) {
-        throw new Error(result.error);
+        // Fallback if no initPoint (shouldn't happen)
+        await fetchAll();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al suscribirse");
+        setActionLoading(false);
       }
-
-      setSuccess(`Suscrito al plan ${PLANS[pendingSubscribeTier].name}`);
-      setShowAddCard(false);
-      setShowPlans(false);
-      setPendingSubscribeTier(null);
-      await fetchAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al suscribirse");
-    } finally {
-      setActionLoading(false);
     }
   };
 
   const handleCancel = async () => {
-    if (!confirm("¿Estás seguro de que deseas cancelar tu suscripción? Se mantendrá activa hasta el final del período actual.")) {
+    if (
+      !confirm(
+        "¿Estás seguro de que deseas cancelar tu suscripción? Se mantendrá activa hasta el final del período actual."
+      )
+    ) {
       return;
     }
 
@@ -192,10 +221,11 @@ export function BillingPageClient() {
     try {
       const res = await fetch("/api/billing/cancel", { method: "POST" });
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error);
 
-      setSuccess("Suscripción programada para cancelar al final del período");
+      setSuccess(
+        "Suscripción programada para cancelar al final del período"
+      );
       await fetchAll();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cancelar");
@@ -211,36 +241,16 @@ export function BillingPageClient() {
     try {
       const res = await fetch("/api/billing/cancel", { method: "DELETE" });
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error);
 
-      setSuccess("Cancelación revertida. Tu suscripción continuará activa.");
+      setSuccess(
+        "Cancelación revertida. Tu suscripción continuará activa."
+      );
       await fetchAll();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al reactivar");
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  const handleRemovePaymentMethod = async (pmId: string) => {
-    if (!confirm("¿Eliminar este método de pago?")) return;
-
-    try {
-      const res = await fetch("/api/billing/payment-methods", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentMethodId: pmId }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error);
-      }
-
-      await fetchAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
     }
   };
 
@@ -276,11 +286,43 @@ export function BillingPageClient() {
         <p className="text-text-secondary mt-1">Gestiona tu plan y pagos</p>
       </div>
 
+      {/* Payment Pending Banner */}
+      {paymentPending && (
+        <div className="p-4 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 text-sm text-accent-cyan flex items-center gap-3">
+          <svg
+            className="w-5 h-5 animate-spin flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          <span>
+            Procesando tu pago con Mercado Pago... Esto puede tardar unos
+            segundos.
+          </span>
+        </div>
+      )}
+
       {/* Alerts */}
       {error && (
         <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
           {error}
-          <button onClick={() => setError(null)} className="ml-2 text-red-300 hover:text-red-200">
+          <button
+            onClick={() => setError(null)}
+            className="ml-2 text-red-300 hover:text-red-200"
+          >
             ✕
           </button>
         </div>
@@ -288,7 +330,10 @@ export function BillingPageClient() {
       {success && (
         <div className="p-3 rounded-xl bg-accent-green/10 border border-accent-green/20 text-sm text-accent-green">
           {success}
-          <button onClick={() => setSuccess(null)} className="ml-2 text-accent-green/70 hover:text-accent-green">
+          <button
+            onClick={() => setSuccess(null)}
+            className="ml-2 text-accent-green/70 hover:text-accent-green"
+          >
             ✕
           </button>
         </div>
@@ -297,7 +342,9 @@ export function BillingPageClient() {
       {/* Current Plan */}
       <GlassCard padding="lg">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-text-primary">Plan actual</h2>
+          <h2 className="text-lg font-semibold text-text-primary">
+            Plan actual
+          </h2>
           {plan && (
             <SubscriptionStatusBadge
               status={plan.status}
@@ -331,7 +378,8 @@ export function BillingPageClient() {
 
           {isActive && sub?.currentPeriodEnd && (
             <p className="text-sm text-text-muted">
-              Próximo cobro: {new Date(sub.currentPeriodEnd).toLocaleDateString("es-CO", {
+              Próximo cobro:{" "}
+              {new Date(sub.currentPeriodEnd).toLocaleDateString("es-CO", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -339,9 +387,17 @@ export function BillingPageClient() {
             </p>
           )}
 
+          {plan?.status === "pending" && (
+            <p className="text-sm text-amber-400">
+              Tu suscripción está pendiente de pago. Completa el pago en Mercado
+              Pago para activar tu plan.
+            </p>
+          )}
+
           {plan?.status === "unpaid" && (
             <p className="text-sm text-accent-red">
-              Tu suscripción está suspendida por falta de pago. Selecciona un plan para reactivar.
+              Tu suscripción está suspendida por falta de pago. Selecciona un
+              plan para reactivar.
             </p>
           )}
 
@@ -349,13 +405,8 @@ export function BillingPageClient() {
             <GlassButton
               variant="secondary"
               size="sm"
-              onClick={() => {
-                setShowPlans(!showPlans);
-                if (!showPlans) {
-                  setShowAddCard(false);
-                  setPendingSubscribeTier(null);
-                }
-              }}
+              onClick={() => setShowPlans(!showPlans)}
+              disabled={paymentPending}
             >
               {showPlans ? "Ocultar planes" : "Cambiar plan"}
             </GlassButton>
@@ -386,115 +437,54 @@ export function BillingPageClient() {
       </GlassCard>
 
       {/* Plan Selector */}
-      {showPlans && !showAddCard && (
+      {showPlans && (
         <GlassCard padding="lg">
-          <h2 className="text-lg font-semibold text-text-primary mb-4">Selecciona un plan</h2>
+          <h2 className="text-lg font-semibold text-text-primary mb-4">
+            Selecciona un plan
+          </h2>
           <PlanSelector
             currentTier={plan?.tier || "basic"}
             currency={currency}
             onSelect={handleSubscribe}
             loading={actionLoading}
           />
-        </GlassCard>
-      )}
-
-      {/* Card Form for Subscription */}
-      {showAddCard && pendingSubscribeTier && (
-        <GlassCard padding="lg">
-          <h2 className="text-lg font-semibold text-text-primary mb-2">
-            Suscribirse a {PLANS[pendingSubscribeTier].name}
-          </h2>
-          <p className="text-sm text-text-muted mb-4">
-            {formatPrice(getPlanPriceCOP(pendingSubscribeTier), "COP")}/mes
-          </p>
-          <PaymentMethodForm
-            mode="subscribe"
-            onTokenized={handleTokenized}
-            onCancel={() => {
-              setShowAddCard(false);
-              setPendingSubscribeTier(null);
-            }}
-          />
           {actionLoading && (
             <div className="mt-4 p-3 rounded-xl bg-accent-cyan/10 border border-accent-cyan/20 text-sm text-accent-cyan">
-              Creando suscripción...
+              Redirigiendo a Mercado Pago...
             </div>
           )}
         </GlassCard>
       )}
 
-      {/* Payment Methods */}
+      {/* Payment Info — Managed by MP */}
       <GlassCard padding="lg">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-text-primary">Método de pago</h2>
-        </div>
-
-        {paymentMethods.length === 0 ? (
-          <div className="text-center py-6">
-            <svg
-              className="w-12 h-12 text-text-muted mx-auto mb-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"
-              />
-            </svg>
-            <p className="text-sm text-text-muted mb-3">
-              Tu tarjeta se guardará al suscribirte a un plan
+        <h2 className="text-lg font-semibold text-text-primary mb-3">
+          Método de pago
+        </h2>
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-border-glass">
+          <div className="w-10 h-10 rounded-lg bg-[#009ee3]/20 flex items-center justify-center">
+            <span className="text-[#009ee3] font-bold text-xs">MP</span>
+          </div>
+          <div>
+            <p className="text-sm text-text-primary">
+              Pagos gestionados por Mercado Pago
+            </p>
+            <p className="text-xs text-text-muted">
+              Tus datos de tarjeta son procesados y almacenados de forma segura
+              por Mercado Pago. Redbot nunca tiene acceso a tu información
+              financiera.
             </p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {paymentMethods.map((pm) => (
-              <div
-                key={pm.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-border-glass"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-7 rounded bg-white/[0.08] flex items-center justify-center">
-                    <span className="text-xs font-medium text-text-secondary uppercase">
-                      {pm.brand?.slice(0, 4) || "CARD"}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-primary">
-                      •••• {pm.last_four}
-                    </p>
-                    <p className="text-xs text-text-muted capitalize">
-                      {pm.brand} {pm.is_default && "· Por defecto"}
-                    </p>
-                  </div>
-                </div>
-                <GlassButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemovePaymentMethod(pm.id)}
-                >
-                  Eliminar
-                </GlassButton>
-              </div>
-            ))}
-          </div>
-        )}
+        </div>
       </GlassCard>
 
       {/* Invoices */}
       <GlassCard padding="lg">
-        <h2 className="text-lg font-semibold text-text-primary mb-4">Historial de facturas</h2>
+        <h2 className="text-lg font-semibold text-text-primary mb-4">
+          Historial de facturas
+        </h2>
         <InvoiceList invoices={invoices} />
       </GlassCard>
     </div>
   );
-}
-
-/**
- * Helper to get COP price for display
- */
-function getPlanPriceCOP(tier: PlanTier): number {
-  return PLANS[tier].priceCOPCents;
 }

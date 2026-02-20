@@ -55,19 +55,23 @@ function addDays(date: Date, days: number): Date {
 
 /**
  * Create a new subscription for an organization.
- * Delegates to MP's /preapproval API — MP charges automatically.
+ *
+ * Two flows:
+ * - **Hosted checkout** (no cardTokenId): Creates pending subscription in MP,
+ *   returns `initPoint` URL. User completes payment on mercadopago.com.
+ *   Org is activated later via webhook (handleSubscriptionPreapproval).
+ * - **Inline** (with cardTokenId): Charges immediately, activates org now.
  */
 export async function subscribe(params: SubscribeParams): Promise<{
   subscriptionId: string;
   providerSubscriptionId: string;
+  initPoint?: string;
 }> {
   const {
     organizationId,
     planTier,
     cardTokenId,
     payerEmail,
-    cardLastFour,
-    cardBrand,
     provider: providerName,
   } = params;
 
@@ -77,16 +81,21 @@ export async function subscribe(params: SubscribeParams): Promise<{
   const currency = paymentProvider.currency;
   const amountCents = getPlanPrice(planTier, currency);
 
-  // Check for existing active subscription
+  // Check for existing active/pending subscription
   const { data: existingSub } = await supabase
     .from("subscriptions")
     .select("id, status")
     .eq("organization_id", organizationId)
-    .not("status", "eq", "canceled")
+    .not("status", "in", '("canceled")')
     .single();
 
   if (existingSub) {
-    throw new Error("Ya existe una suscripción activa. Cancela la actual primero.");
+    // If there's a stale pending subscription, cancel it in MP and delete it
+    if (existingSub.status === "pending") {
+      await supabase.from("subscriptions").delete().eq("id", existingSub.id);
+    } else {
+      throw new Error("Ya existe una suscripción activa. Cancela la actual primero.");
+    }
   }
 
   // Get org info
@@ -96,13 +105,15 @@ export async function subscribe(params: SubscribeParams): Promise<{
     .eq("id", organizationId)
     .single();
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.redbot.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://redbot.app";
 
   // Check if org is in trial (offer free trial for first subscription)
   const isInTrial = org?.trial_ends_at && new Date(org.trial_ends_at) > new Date();
   const trialDaysRemaining = isInTrial
     ? Math.ceil((new Date(org.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : 0;
+
+  const isHostedCheckout = !cardTokenId;
 
   // Create MP subscription
   const mpResult = await paymentProvider.createSubscription({
@@ -118,19 +129,29 @@ export async function subscribe(params: SubscribeParams): Promise<{
     }),
   });
 
-  // Create subscription record in our DB
+  // Determine initial subscription status
   const now = new Date();
   const periodEnd = trialDaysRemaining > 0
     ? addDays(now, trialDaysRemaining)
     : addMonths(now, 1);
 
+  let initialStatus: string;
+  if (isHostedCheckout) {
+    initialStatus = "pending"; // Waiting for user to complete on MP
+  } else if (trialDaysRemaining > 0) {
+    initialStatus = "trialing";
+  } else {
+    initialStatus = "active";
+  }
+
+  // Create subscription record in our DB
   const { data: subscription, error: subError } = await supabase
     .from("subscriptions")
     .insert({
       organization_id: organizationId,
       provider: resolvedProvider,
       plan_tier: planTier,
-      status: (trialDaysRemaining > 0 ? "trialing" : "active") as SubscriptionStatus,
+      status: initialStatus as SubscriptionStatus,
       current_period_start: now.toISOString(),
       current_period_end: periodEnd.toISOString(),
       amount_cents: amountCents,
@@ -153,50 +174,96 @@ export async function subscribe(params: SubscribeParams): Promise<{
     throw new Error(`Error al crear suscripción: ${subError?.message}`);
   }
 
-  // Save payment method display info
-  if (cardLastFour && cardBrand) {
-    const pmResult = await paymentProvider.createPaymentSource({
+  // Only activate org immediately for inline flow
+  // For hosted checkout, activation happens in handleSubscriptionPreapproval (webhook)
+  if (!isHostedCheckout) {
+    await syncLimits(organizationId, planTier);
+    await updateOrgPlanStatus(
       organizationId,
-      lastFour: cardLastFour,
-      brand: cardBrand,
-      type: "card",
-      customerEmail: payerEmail,
-    });
-
-    // Check if first payment method
-    const { count: existingCount } = await supabase
-      .from("payment_methods")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", organizationId)
-      .eq("status", "active");
-
-    const isFirst = (existingCount || 0) === 0;
-
-    await supabase.from("payment_methods").insert({
-      organization_id: organizationId,
-      provider: resolvedProvider,
-      provider_payment_source_id: pmResult.providerPaymentSourceId,
-      type: "card",
-      last_four: cardLastFour,
-      brand: cardBrand.toLowerCase(),
-      is_default: isFirst,
-      status: "active",
-    });
+      planTier,
+      trialDaysRemaining > 0 ? "trialing" : "active",
+      resolvedProvider
+    );
   }
-
-  // Sync limits + update org status
-  await syncLimits(organizationId, planTier);
-  await updateOrgPlanStatus(
-    organizationId,
-    planTier,
-    trialDaysRemaining > 0 ? "trialing" : "active",
-    resolvedProvider
-  );
 
   return {
     subscriptionId: subscription.id,
     providerSubscriptionId: mpResult.providerSubscriptionId,
+    initPoint: mpResult.initPoint,
   };
+}
+
+// ============================================================
+// Handle Subscription Preapproval (from webhook — hosted checkout)
+// ============================================================
+
+/**
+ * Handle a subscription_preapproval webhook event.
+ * Called when the user completes payment on MP's hosted checkout.
+ * Transitions subscription from "pending" → "active"/"trialing".
+ */
+export async function handleSubscriptionPreapproval(
+  preapprovalId: string
+): Promise<void> {
+  const supabase = createAdminClient();
+  const paymentProvider = getPaymentProvider("mercadopago");
+
+  // Fetch current status from MP
+  const mpStatus = await paymentProvider.getSubscriptionStatus(preapprovalId);
+
+  if (mpStatus.status !== "authorized") {
+    console.log(
+      `[billing] Preapproval ${preapprovalId} status: ${mpStatus.status} (no activation needed)`
+    );
+    return;
+  }
+
+  // Find our pending subscription
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("provider_subscription_id", preapprovalId)
+    .single();
+
+  if (!sub) {
+    console.error(`[billing] No subscription found for preapproval ${preapprovalId}`);
+    return;
+  }
+
+  // Only process if still pending (idempotency)
+  if (sub.status !== "pending") {
+    console.log(`[billing] Subscription ${sub.id} already ${sub.status}, skipping`);
+    return;
+  }
+
+  const now = new Date();
+  const hasTrial = sub.trial_ends_at && new Date(sub.trial_ends_at) > now;
+  const newStatus = hasTrial ? "trialing" : "active";
+
+  // Activate subscription
+  await supabase
+    .from("subscriptions")
+    .update({
+      status: newStatus as SubscriptionStatus,
+      current_period_start: now.toISOString(),
+      current_period_end: hasTrial
+        ? sub.trial_ends_at
+        : addMonths(now, 1).toISOString(),
+    })
+    .eq("id", sub.id);
+
+  // Activate org
+  await syncLimits(sub.organization_id, sub.plan_tier);
+  await updateOrgPlanStatus(
+    sub.organization_id,
+    sub.plan_tier,
+    newStatus,
+    "mercadopago"
+  );
+
+  console.log(
+    `[billing] Activated subscription ${sub.id} for org ${sub.organization_id} (${newStatus})`
+  );
 }
 
 // ============================================================

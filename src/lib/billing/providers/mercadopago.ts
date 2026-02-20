@@ -7,7 +7,7 @@
  * Key differences from Wompi:
  * - Native subscriptions (no need for our own billing engine state machine)
  * - Amounts in whole COP (80000), not centavos (8000000) — we convert
- * - Card tokenization via frontend @mercadopago/sdk-js
+ * - Hosted checkout via init_point redirect (no card data on our side)
  * - Webhook verification via HMAC-SHA256 (not simple SHA256)
  *
  * API docs: https://www.mercadopago.com.co/developers/es/reference
@@ -98,6 +98,7 @@ function mapMPSubscriptionStatus(mpStatus: string): ProviderSubscriptionStatus {
 interface MPPreapprovalResponse {
   id: string;
   status: string;
+  init_point?: string;
   next_payment_date?: string;
   auto_recurring?: {
     frequency: number;
@@ -193,11 +194,18 @@ export const mercadopagoProvider: PaymentProvider = {
         }),
       },
       payer_email: payerEmail,
-      card_token_id: cardTokenId,
       external_reference: externalReference,
       back_url: backUrl,
-      status: "authorized",
     };
+
+    // If card token provided → inline flow (authorized immediately)
+    // If no card token → hosted checkout (pending, redirect to init_point)
+    if (cardTokenId) {
+      body.card_token_id = cardTokenId;
+      body.status = "authorized";
+    } else {
+      body.status = "pending";
+    }
 
     const response = await mpRequest<MPPreapprovalResponse>(
       "/preapproval",
@@ -211,6 +219,7 @@ export const mercadopagoProvider: PaymentProvider = {
       providerSubscriptionId: response.id,
       status: mapMPSubscriptionStatus(response.status),
       nextPaymentDate: response.next_payment_date,
+      initPoint: response.init_point,
       rawResponse: response as unknown as Record<string, unknown>,
     };
   },
@@ -348,8 +357,15 @@ export const mercadopagoProvider: PaymentProvider = {
 
     // Map MP action to our event type
     let eventType: WebhookEventType;
+    const bodyType = body.type as string | undefined;
+
     if (action.includes("subscription_authorized_payment")) {
       eventType = "subscription_authorized_payment";
+    } else if (
+      bodyType === "subscription_preapproval" ||
+      action.includes("subscription_preapproval")
+    ) {
+      eventType = "subscription_preapproval";
     } else if (action.includes("payment")) {
       eventType = "payment.approved"; // We'll verify actual status via API
     } else {

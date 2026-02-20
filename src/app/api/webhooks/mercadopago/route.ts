@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mercadopagoProvider } from "@/lib/billing/providers/mercadopago";
-import { handleSubscriptionPayment } from "@/lib/billing/engine";
+import {
+  handleSubscriptionPayment,
+  handleSubscriptionPreapproval,
+} from "@/lib/billing/engine";
 
 /**
  * POST /api/webhooks/mercadopago — Mercado Pago webhook handler
@@ -52,6 +55,14 @@ export async function POST(request: NextRequest) {
         // We'll pick it up via handleSubscriptionPayment which checks status
         if (event.resourceId) {
           await handleSubscriptionPayment(event.resourceId);
+        }
+        break;
+      }
+
+      case "subscription_preapproval": {
+        // Subscription status changed (e.g., pending → authorized after hosted checkout)
+        if (event.resourceId) {
+          await handleSubscriptionPreapproval(event.resourceId);
         }
         break;
       }

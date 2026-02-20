@@ -5,12 +5,14 @@ import type { PlanTier } from "@/lib/supabase/types";
 
 /**
  * POST /api/billing/subscribe — Create subscription via Mercado Pago
- * Body: { planTier, cardTokenId, payerEmail, cardLastFour?, cardBrand? }
+ * Body: { planTier, payerEmail }
  *
- * Flow:
- * 1. Frontend tokenizes card with @mercadopago/sdk-js
- * 2. Sends cardTokenId + payerEmail to this endpoint
- * 3. Engine creates MP subscription + local records
+ * Hosted checkout flow:
+ * 1. Frontend sends planTier + payerEmail
+ * 2. Engine creates pending MP subscription (no card data needed)
+ * 3. Returns { initPoint } — URL to redirect user to MP checkout
+ * 4. User pays on mercadopago.com
+ * 5. Webhook activates the subscription
  */
 export async function POST(request: NextRequest) {
   const authResult = await getAuthContext({
@@ -20,18 +22,11 @@ export async function POST(request: NextRequest) {
   const { organizationId } = authResult;
 
   const body = await request.json();
-  const { planTier, cardTokenId, payerEmail, cardLastFour, cardBrand } = body;
+  const { planTier, payerEmail } = body;
 
   if (!planTier || !["basic", "power", "omni"].includes(planTier)) {
     return NextResponse.json(
       { error: "Plan inválido. Debe ser 'basic', 'power' o 'omni'" },
-      { status: 400 }
-    );
-  }
-
-  if (!cardTokenId) {
-    return NextResponse.json(
-      { error: "Token de tarjeta requerido" },
       { status: 400 }
     );
   }
@@ -47,13 +42,14 @@ export async function POST(request: NextRequest) {
     const result = await subscribe({
       organizationId,
       planTier: planTier as PlanTier,
-      cardTokenId,
       payerEmail,
-      cardLastFour,
-      cardBrand,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      subscriptionId: result.subscriptionId,
+      providerSubscriptionId: result.providerSubscriptionId,
+      initPoint: result.initPoint,
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Error al suscribirse" },
