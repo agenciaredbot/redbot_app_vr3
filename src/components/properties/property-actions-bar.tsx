@@ -5,11 +5,28 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { GlassButton } from "@/components/ui/glass-button";
 import { PropertyImportDialog } from "./property-import-dialog";
+import { useFeatureGate } from "@/hooks/use-feature-gate";
+import { LimitIndicator } from "@/components/billing/plan-gate";
 
 export function PropertyActionsBar() {
   const [importOpen, setImportOpen] = useState(false);
+  const [propertyCount, setPropertyCount] = useState<number | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { getLimitInfo } = useFeatureGate();
+
+  // Fetch property count for limit check
+  useEffect(() => {
+    fetch("/api/properties?limit=1")
+      .then((r) => r.json())
+      .then((d) => setPropertyCount(d.total ?? 0))
+      .catch(() => {});
+  }, []);
+
+  const limitInfo = propertyCount !== null
+    ? getLimitInfo("properties", propertyCount)
+    : null;
+  const canAddProperty = limitInfo?.allowed !== false;
 
   const currentSearch = searchParams.get("search") || "";
   const [searchValue, setSearchValue] = useState(currentSearch);
@@ -95,16 +112,36 @@ export function PropertyActionsBar() {
           )}
         </div>
 
+        {limitInfo && limitInfo.max !== -1 && (
+          <LimitIndicator
+            current={limitInfo.current}
+            max={limitInfo.max}
+            label="propiedades"
+            className="w-32"
+          />
+        )}
         <GlassButton
           variant="secondary"
           size="sm"
           onClick={() => setImportOpen(true)}
+          disabled={!canAddProperty}
+          title={!canAddProperty ? limitInfo?.message : undefined}
         >
           Importar Excel
         </GlassButton>
-        <Link href="/admin/properties/new">
-          <GlassButton size="sm">Agregar propiedad</GlassButton>
-        </Link>
+        {canAddProperty ? (
+          <Link href="/admin/properties/new">
+            <GlassButton size="sm">Agregar propiedad</GlassButton>
+          </Link>
+        ) : (
+          <GlassButton
+            size="sm"
+            disabled
+            title={limitInfo?.message}
+          >
+            Agregar propiedad
+          </GlassButton>
+        )}
       </div>
 
       <PropertyImportDialog

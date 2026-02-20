@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { checkLimit } from "@/lib/plans/feature-gate";
 
 /**
  * GET /api/team — List team members + pending invitations + limits
@@ -78,49 +79,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Check member limit
-  const { count: activeCount } = await supabase
-    .from("user_profiles")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", organizationId)
-    .eq("is_active", true);
+  // Check agent limit (includes active members + pending invitations)
+  const limitCheck = await checkLimit(organizationId, "agents");
+  if (!limitCheck.allowed) {
+    return NextResponse.json(
+      { error: limitCheck.message, limit: { current: limitCheck.current, max: limitCheck.max } },
+      { status: 403 }
+    );
+  }
 
+  // Get org slug for invite URL
   const { data: org } = await supabase
     .from("organizations")
-    .select("max_agents, slug")
+    .select("slug")
     .eq("id", organizationId)
     .single();
-
-  const maxAgents = org?.max_agents ?? 2;
-  const current = activeCount ?? 0;
-
-  // -1 means unlimited
-  if (maxAgents !== -1 && current >= maxAgents) {
-    return NextResponse.json(
-      {
-        error: `Límite de miembros alcanzado (${current}/${maxAgents}). Actualiza tu plan para agregar más.`,
-      },
-      { status: 403 }
-    );
-  }
-
-  // Also count pending invitations towards the limit
-  const { count: pendingCount } = await supabase
-    .from("invitations")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", organizationId)
-    .eq("status", "pending")
-    .gt("expires_at", new Date().toISOString());
-
-  const totalReserved = current + (pendingCount ?? 0);
-  if (maxAgents !== -1 && totalReserved >= maxAgents) {
-    return NextResponse.json(
-      {
-        error: `Ya hay invitaciones pendientes que alcanzarían el límite. Cancela alguna o actualiza tu plan.`,
-      },
-      { status: 403 }
-    );
-  }
 
   // Generate token
   const token = crypto.randomUUID();

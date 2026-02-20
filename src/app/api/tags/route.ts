@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { hasFeatureForOrg } from "@/lib/plans/feature-gate";
 
 export async function GET() {
   const authResult = await getAuthContext();
@@ -27,6 +28,15 @@ export async function POST(request: NextRequest) {
   });
   if (authResult instanceof NextResponse) return authResult;
   const { supabase, organizationId } = authResult;
+
+  // Check custom tags feature
+  const featureCheck = await hasFeatureForOrg(organizationId, "customTags");
+  if (!featureCheck.allowed) {
+    return NextResponse.json(
+      { error: featureCheck.message },
+      { status: 403 }
+    );
+  }
 
   const body = await request.json();
 

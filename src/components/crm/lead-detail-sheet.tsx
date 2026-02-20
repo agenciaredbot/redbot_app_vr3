@@ -7,6 +7,7 @@ import { GlassButton } from "@/components/ui/glass-button";
 import { GlassSelect } from "@/components/ui/glass-select";
 import { PIPELINE_STAGES } from "@/config/constants";
 import { formatDateTime, formatPrice } from "@/lib/utils/format";
+import { useFeatureGate } from "@/hooks/use-feature-gate";
 
 interface TagData {
   id: string;
@@ -63,6 +64,8 @@ export function LeadDetailSheet({
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [newTagValue, setNewTagValue] = useState("");
   const [creatingTag, setCreatingTag] = useState(false);
+  const { canFeature } = useFeatureGate();
+  const canCreateTags = canFeature("customTags");
 
   const fetchDetail = async () => {
     try {
@@ -388,32 +391,41 @@ export function LeadDetailSheet({
                   )}
 
                   {/* Create custom tag */}
-                  <div className="border-t border-border-glass pt-3">
-                    <p className="text-xs font-medium text-text-muted mb-1.5">
-                      Crear tag personalizado
-                    </p>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Nuevo tag..."
-                        value={newTagValue}
-                        onChange={(e) => setNewTagValue(e.target.value)}
-                        onKeyDown={(e) =>
-                          e.key === "Enter" && handleCreateCustomTag()
-                        }
-                        className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-white/[0.05] border border-border-glass text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-blue/50"
-                      />
-                      <GlassButton
-                        size="sm"
-                        variant="secondary"
-                        onClick={handleCreateCustomTag}
-                        disabled={!newTagValue.trim() || creatingTag}
-                        loading={creatingTag}
-                      >
-                        Crear
-                      </GlassButton>
+                  {canCreateTags ? (
+                    <div className="border-t border-border-glass pt-3">
+                      <p className="text-xs font-medium text-text-muted mb-1.5">
+                        Crear tag personalizado
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nuevo tag..."
+                          value={newTagValue}
+                          onChange={(e) => setNewTagValue(e.target.value)}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleCreateCustomTag()
+                          }
+                          className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-white/[0.05] border border-border-glass text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent-blue/50"
+                        />
+                        <GlassButton
+                          size="sm"
+                          variant="secondary"
+                          onClick={handleCreateCustomTag}
+                          disabled={!newTagValue.trim() || creatingTag}
+                          loading={creatingTag}
+                        >
+                          Crear
+                        </GlassButton>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="border-t border-border-glass pt-3">
+                      <p className="text-[11px] text-amber-400/80">
+                        Tags personalizados disponibles desde el plan Power.{" "}
+                        <a href="/admin/billing" className="underline hover:text-amber-300">Actualizar plan</a>
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </GlassCard>

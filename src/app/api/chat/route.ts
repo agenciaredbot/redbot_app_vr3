@@ -4,6 +4,7 @@ import { buildSystemPrompt } from "@/lib/anthropic/agent-system-prompt";
 import { agentTools } from "@/lib/anthropic/tools";
 import { handleToolCall } from "@/lib/anthropic/tool-handlers";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkLimit, incrementConversationCountDirect } from "@/lib/plans/feature-gate";
 import type Anthropic from "@anthropic-ai/sdk";
 
 export const maxDuration = 60;
@@ -34,6 +35,24 @@ export async function POST(request: NextRequest) {
         JSON.stringify({ error: "Organización no encontrada" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
+    }
+
+    // Check conversation limit for new conversations (first message)
+    const isNewConversation = !conversationId || messages.length <= 1;
+    if (isNewConversation) {
+      const limitCheck = await checkLimit(org.id, "conversations");
+      if (!limitCheck.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: limitCheck.message,
+            limitReached: true,
+            limit: { current: limitCheck.current, max: limitCheck.max },
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      // Increment counter for new conversation
+      await incrementConversationCountDirect(org.id);
     }
 
     let systemPrompt = buildSystemPrompt(org);

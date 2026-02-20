@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { generateSlug } from "@/lib/utils/slug";
+import { checkLimit } from "@/lib/plans/feature-gate";
 
 export async function GET(request: NextRequest) {
   const authResult = await getAuthContext();
@@ -54,6 +55,15 @@ export async function POST(request: NextRequest) {
   });
   if (authResult instanceof NextResponse) return authResult;
   const { supabase, organizationId } = authResult;
+
+  // Check property limit
+  const limitCheck = await checkLimit(organizationId, "properties");
+  if (!limitCheck.allowed) {
+    return NextResponse.json(
+      { error: limitCheck.message, limit: { current: limitCheck.current, max: limitCheck.max } },
+      { status: 403 }
+    );
+  }
 
   const body = await request.json();
 
