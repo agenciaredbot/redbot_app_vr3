@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassInput, GlassTextarea } from "@/components/ui/glass-input";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { LogoUpload } from "./logo-upload";
+import { TenantLinksBlock } from "@/components/ui/tenant-links-block";
 
 interface Organization {
   id: string;
@@ -34,65 +35,6 @@ interface SettingsPageClientProps {
   org: Organization;
   canEdit: boolean;
   userName: string;
-}
-
-function TenantLinkBox({ slug }: { slug: string }) {
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const url = `https://${slug}.redbot.app`;
-
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setCopied(false), 2000);
-    });
-  }, [url]);
-
-  return (
-    <div className="p-3 rounded-xl bg-accent-blue/5 border border-accent-blue/20">
-      <label className="block text-xs font-medium text-text-secondary mb-1.5">
-        Tu landing page
-      </label>
-      <div className="flex items-center gap-2">
-        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-glass border border-border-glass">
-          <svg className="w-4 h-4 text-accent-blue flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          <span className="text-sm font-mono text-text-primary truncate">
-            {url}
-          </span>
-        </div>
-        <button
-          onClick={handleCopy}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0 ${
-            copied
-              ? "bg-accent-green/10 text-accent-green border border-accent-green/30"
-              : "bg-accent-blue/10 text-accent-blue border border-accent-blue/30 hover:bg-accent-blue/20"
-          }`}
-        >
-          {copied ? (
-            <>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              Copiado
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copiar link
-            </>
-          )}
-        </button>
-      </div>
-      <p className="text-[11px] text-text-muted mt-1.5">
-        Comparte este enlace con tus clientes o en tus redes sociales.
-      </p>
-    </div>
-  );
 }
 
 function SaveIndicator({ saving, saved }: { saving: boolean; saved: boolean }) {
@@ -403,7 +345,15 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
         </div>
       </GlassCard>
 
-      {/* Section 2: Organization info */}
+      {/* Section 2: Tenant Links */}
+      <GlassCard>
+        <h2 className="text-lg font-semibold text-text-primary mb-4">
+          Tus enlaces
+        </h2>
+        <TenantLinksBlock slug={org.slug} />
+      </GlassCard>
+
+      {/* Section 3: Organization info */}
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-text-primary">
@@ -444,7 +394,6 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
             onChange={(e) => setEmail(e.target.value)}
             disabled={!canEdit}
           />
-          <TenantLinkBox slug={org.slug} />
         </div>
       </GlassCard>
 

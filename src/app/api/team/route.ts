@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("max_agents")
+    .select("max_agents, slug")
     .eq("id", organizationId)
     .single();
 
@@ -143,11 +143,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  // Build invite URL using tenant subdomain when available
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const inviteUrl = org?.slug
+    ? `https://${org.slug}.${rootDomain}/join/${token}`
+    : `${appUrl}/join/${token}`;
 
   return NextResponse.json({
     invitation,
-    inviteUrl: `${appUrl}/join/${token}`,
+    inviteUrl,
   });
 }
