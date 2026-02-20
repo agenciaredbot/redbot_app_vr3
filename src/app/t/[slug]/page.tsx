@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PropertyGrid } from "@/components/properties/property-grid";
 import { PropertyFilters } from "@/components/properties/property-filters";
 import { GlassCard } from "@/components/ui/glass-card";
+import { InlineChatWrapper } from "@/components/chat/inline-chat-wrapper";
+import { getI18nText } from "@/lib/utils/format";
 
 export default async function TenantHomePage({
   params,
@@ -17,7 +19,7 @@ export default async function TenantHomePage({
   // Get org
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name, agent_name")
+    .select("id, name, slug, agent_name, agent_welcome_message")
     .eq("slug", slug)
     .single();
 
@@ -83,9 +85,18 @@ export default async function TenantHomePage({
 
       {/* Filters + Grid */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <GlassCard padding="md" className="mb-8">
+        <GlassCard padding="md" className="mb-4">
           <PropertyFilters currentFilters={filters} />
         </GlassCard>
+
+        {/* AI Agent inline chat */}
+        <div className="mb-8">
+          <InlineChatWrapper
+            organizationSlug={org.slug}
+            agentName={org.agent_name}
+            welcomeMessage={getI18nText(org.agent_welcome_message) || undefined}
+          />
+        </div>
 
         {!properties || properties.length === 0 ? (
           <div className="text-center py-16">

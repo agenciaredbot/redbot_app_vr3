@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PropertyDetail } from "@/components/properties/property-detail";
 import { PropertyContextSetter } from "@/components/chat/property-context-setter";
+import { InlineChatWrapper } from "@/components/chat/inline-chat-wrapper";
 import { getI18nText, formatPrice, formatPropertyType } from "@/lib/utils/format";
 
 interface Props {
@@ -52,7 +53,7 @@ export default async function PropertyDetailPage({ params }: Props) {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("id")
+    .select("id, slug, agent_name, agent_welcome_message")
     .eq("slug", slug)
     .single();
 
@@ -89,6 +90,15 @@ export default async function PropertyDetailPage({ params }: Props) {
         }}
       />
       <PropertyDetail property={property} />
+
+      {/* AI Agent inline chat */}
+      <div className="mt-8">
+        <InlineChatWrapper
+          organizationSlug={org.slug}
+          agentName={org.agent_name}
+          welcomeMessage={getI18nText(org.agent_welcome_message) || undefined}
+        />
+      </div>
     </div>
   );
 }
