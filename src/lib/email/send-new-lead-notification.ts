@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resend, EMAIL_FROM } from "./resend";
+import { getResend, EMAIL_FROM } from "./resend";
 import {
   buildNewLeadEmailHtml,
   buildNewLeadEmailSubject,
@@ -100,7 +100,7 @@ export async function sendNewLeadNotification(
       createdAt: lead.created_at,
     });
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: EMAIL_FROM,
       to: adminEmails,
       subject: buildNewLeadEmailSubject(leadName),
