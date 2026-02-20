@@ -1,9 +1,13 @@
 import type { PlanTier } from "@/lib/supabase/types";
+import type { BillingCurrency } from "@/lib/billing/types";
 
 export interface PlanDefinition {
   name: string;
   tier: PlanTier;
-  priceMonthly: number; // in cents
+  /** Price in COP centavos (primary currency — Mercado Pago) */
+  priceCOPCents: number;
+  /** Price in USD cents (secondary — Stripe, future) */
+  priceUSDCents: number;
   trialDays: number;
   limits: {
     maxProperties: number; // -1 = unlimited
@@ -20,7 +24,8 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
   basic: {
     name: "Basic",
     tier: "basic",
-    priceMonthly: 8000, // $80 USD
+    priceCOPCents: 80_000_00, // $80,000 COP
+    priceUSDCents: 20_00, // $20 USD
     trialDays: 15,
     limits: {
       maxProperties: 50,
@@ -35,7 +40,8 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
   power: {
     name: "Power",
     tier: "power",
-    priceMonthly: 19900, // $199 USD
+    priceCOPCents: 199_000_00, // $199,000 COP
+    priceUSDCents: 50_00, // $50 USD
     trialDays: 15,
     limits: {
       maxProperties: 200,
@@ -50,7 +56,8 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
   omni: {
     name: "Omni",
     tier: "omni",
-    priceMonthly: 29900, // $299 USD
+    priceCOPCents: 299_000_00, // $299,000 COP
+    priceUSDCents: 75_00, // $75 USD
     trialDays: 15,
     limits: {
       maxProperties: -1,
@@ -63,3 +70,29 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     },
   },
 };
+
+/**
+ * Get the price for a plan in the appropriate currency
+ */
+export function getPlanPrice(
+  tier: PlanTier,
+  currency: BillingCurrency
+): number {
+  const plan = PLANS[tier];
+  return currency === "COP" ? plan.priceCOPCents : plan.priceUSDCents;
+}
+
+/**
+ * Format price for display
+ * COP: $80,000 — USD: $20.00
+ */
+export function formatPrice(
+  amountCents: number,
+  currency: BillingCurrency
+): string {
+  if (currency === "COP") {
+    const whole = Math.round(amountCents / 100);
+    return `$${whole.toLocaleString("es-CO")}`;
+  }
+  return `$${(amountCents / 100).toFixed(2)} USD`;
+}
