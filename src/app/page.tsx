@@ -62,6 +62,12 @@ export default function HomePage() {
             >
               Iniciar sesión
             </Link>
+            <Link
+              href="/landing-marketing"
+              className="block w-full py-3 px-4 rounded-xl text-text-muted hover:text-accent-cyan transition-colors text-center text-sm"
+            >
+              Más información
+            </Link>
           </div>
 
           <div className="mt-8 pt-6 border-t border-border-glass">
