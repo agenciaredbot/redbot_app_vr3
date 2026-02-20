@@ -19,7 +19,7 @@ export function InlineChat({
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { messages, isStreaming, toolActivity, sendMessage, clearMessages } =
@@ -32,11 +32,12 @@ export function InlineChat({
     }
   }, [messages.length]);
 
-  // Auto-scroll to bottom on new messages
+  // Auto-scroll the messages container to bottom during streaming and new messages
   useEffect(() => {
-    if (isExpanded && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    const container = messagesContainerRef.current;
+    if (!container || !isExpanded) return;
+    // Scroll the internal container, not the page
+    container.scrollTop = container.scrollHeight;
   }, [messages, toolActivity, isExpanded]);
 
   const handleSend = () => {
@@ -126,7 +127,10 @@ export function InlineChat({
             </div>
 
             {/* Messages area */}
-            <div className="overflow-y-auto max-h-[300px] p-4 space-y-3">
+            <div
+              ref={messagesContainerRef}
+              className="overflow-y-auto max-h-[300px] p-4 space-y-3"
+            >
               {visibleMessages.map((msg) => (
                 <ChatMessageBubble key={msg.id} message={msg} />
               ))}
@@ -140,8 +144,6 @@ export function InlineChat({
                   </div>
                 </div>
               )}
-
-              <div ref={messagesEndRef} />
             </div>
           </div>
         )}
