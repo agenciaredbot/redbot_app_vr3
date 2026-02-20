@@ -157,8 +157,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Fire-and-forget: send email notification to org admins
-  void sendNewLeadNotification(organizationId, data);
+  // Send email notification to org admins (await to ensure it completes before lambda exits)
+  await sendNewLeadNotification(organizationId, data);
 
   return NextResponse.json({ lead: data }, { status: 201 });
 }

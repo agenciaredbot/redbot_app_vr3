@@ -217,9 +217,9 @@ async function registerLead(
     return JSON.stringify({ error: "No se pudo registrar el contacto: " + error.message });
   }
 
-  // Fire-and-forget: send email notification to org admins
+  // Send email notification to org admins (await to ensure it completes before lambda exits)
   if (data) {
-    void sendNewLeadNotification(organizationId, data);
+    await sendNewLeadNotification(organizationId, data);
   }
 
   // Auto-tag the lead with system tags
