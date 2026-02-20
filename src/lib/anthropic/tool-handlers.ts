@@ -25,6 +25,7 @@ interface RegisterLeadInput {
   timeline?: string;
   notes?: string;
   interested_property_id?: string;
+  wants_visit?: boolean;
   tags?: string[];
 }
 
@@ -206,7 +207,7 @@ async function registerLead(
       notes: input.notes || null,
       initial_property_id: input.interested_property_id || null,
       source: "ai_chat",
-      pipeline_stage: "nuevo",
+      pipeline_stage: input.wants_visit ? "visita_tour" : "nuevo",
     })
     .select("id")
     .single();

@@ -106,6 +106,11 @@ export const agentTools: Anthropic.Tool[] = [
           description:
             "ID de la propiedad en la que está interesado (si aplica)",
         },
+        wants_visit: {
+          type: "boolean",
+          description:
+            "true si el visitante solicita agendar una visita, tour o recorrido a una propiedad. Esto ubica al lead directamente en el stage 'Visita / Tour' del pipeline.",
+        },
         tags: {
           type: "array",
           items: {
