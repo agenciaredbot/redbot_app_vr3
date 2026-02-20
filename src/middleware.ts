@@ -77,11 +77,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(url, { headers: response.headers });
   }
 
-  // Route: Tenant admin — rewrite to (dashboard) route group
+  // Route: Tenant admin — serve directly (no rewrite needed)
+  // The (dashboard)/admin route group already handles /admin/* paths.
+  // Auth resolves the org via user_profiles.organization_id.
+  // The subdomain is available via x-organization-slug header if needed.
   if (subdomain && pathname.startsWith("/admin")) {
-    const url = request.nextUrl.clone();
-    url.pathname = `/_dashboard/${subdomain}${pathname}`;
-    return NextResponse.rewrite(url, { headers: response.headers });
+    return response;
   }
 
   return response;

@@ -37,6 +37,11 @@ export async function GET(request: NextRequest) {
 
   const redirectResponse = NextResponse.redirect(redirectTo);
 
+  // Cross-subdomain cookie domain
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
+  const isProduction = !rootDomain.includes("localhost");
+  const cookieDomain = isProduction ? `.${rootDomain}` : undefined;
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -48,7 +53,11 @@ export async function GET(request: NextRequest) {
         setAll(cookiesToSet) {
           console.log("[auth/callback] Setting cookies:", cookiesToSet.map(c => c.name));
           cookiesToSet.forEach(({ name, value, options }) => {
-            redirectResponse.cookies.set(name, value, options);
+            const cookieOptions = {
+              ...options,
+              ...(cookieDomain && { domain: cookieDomain }),
+            };
+            redirectResponse.cookies.set(name, value, cookieOptions);
           });
         },
       },

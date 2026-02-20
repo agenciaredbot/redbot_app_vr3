@@ -1,6 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+// Cross-subdomain cookie domain (e.g. ".redbot.app" allows *.redbot.app)
+const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
+const isProduction = !rootDomain.includes("localhost");
+const cookieDomain = isProduction ? `.${rootDomain}` : undefined;
+
 export async function createClient() {
   const cookieStore = await cookies();
 
@@ -15,9 +20,13 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const cookieOptions = {
+                ...options,
+                ...(cookieDomain && { domain: cookieDomain }),
+              };
+              cookieStore.set(name, value, cookieOptions);
+            });
           } catch {
             // The `setAll` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing sessions.

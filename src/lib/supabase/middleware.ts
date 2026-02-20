@@ -1,6 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
+// Cross-subdomain cookie domain (e.g. ".redbot.app" allows *.redbot.app)
+const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
+const isProduction = !rootDomain.includes("localhost");
+const cookieDomain = isProduction ? `.${rootDomain}` : undefined;
+
 export function createMiddlewareClient(
   request: NextRequest,
   response: NextResponse
@@ -16,8 +21,13 @@ export function createMiddlewareClient(
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
+            const cookieOptions = {
+              ...options,
+              // Set domain for cross-subdomain cookie sharing in production
+              ...(cookieDomain && { domain: cookieDomain }),
+            };
             request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, cookieOptions);
           });
         },
       },
