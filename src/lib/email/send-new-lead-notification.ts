@@ -70,11 +70,9 @@ export async function sendNewLeadNotification(
     );
 
     // Build the lead URL with deep-link query param
+    // Admin dashboard lives at redbot.app/admin/leads (no subdomain)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://redbot.app";
-    const baseUrl = appUrl.includes("localhost")
-      ? `${appUrl}/admin/leads`
-      : `https://${org.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app"}/admin/leads`;
-    const leadUrl = `${baseUrl}?lead=${lead.id}`;
+    const leadUrl = `${appUrl}/admin/leads?lead=${lead.id}`;
 
     // Resolve source label
     const sourceOption = LEAD_SOURCE_OPTIONS.find(
