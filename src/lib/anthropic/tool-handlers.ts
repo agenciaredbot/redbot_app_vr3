@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getI18nText, formatPrice, formatPropertyType, formatArea } from "@/lib/utils/format";
+import { sendNewLeadNotification } from "@/lib/email/send-new-lead-notification";
 
 interface SearchInput {
   query?: string;
@@ -209,11 +210,16 @@ async function registerLead(
       source: "ai_chat",
       pipeline_stage: input.wants_visit ? "visita_tour" : "nuevo",
     })
-    .select("id")
+    .select("*")
     .single();
 
   if (error) {
     return JSON.stringify({ error: "No se pudo registrar el contacto: " + error.message });
+  }
+
+  // Fire-and-forget: send email notification to org admins
+  if (data) {
+    void sendNewLeadNotification(organizationId, data);
   }
 
   // Auto-tag the lead with system tags
