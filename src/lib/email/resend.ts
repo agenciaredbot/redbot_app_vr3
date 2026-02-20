@@ -18,4 +18,4 @@ export function getResend(): Resend {
 }
 
 export const EMAIL_FROM =
-  process.env.RESEND_FROM_EMAIL || "Redbot <notificaciones@redbot.app>";
+  process.env.RESEND_FROM_EMAIL || "Redbot <notificaciones@contact.redbot.app>";
