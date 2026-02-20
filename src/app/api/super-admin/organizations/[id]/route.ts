@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSuperAdminContext } from "@/lib/auth/get-super-admin-context";
+import { PLANS } from "@/config/plans";
+import type { PlanTier } from "@/lib/supabase/types";
 
 export async function GET(
   request: NextRequest,
@@ -70,6 +72,8 @@ export async function PUT(
     "max_conversations_per_month",
     "is_active",
     "onboarding_completed",
+    "trial_ends_at",
+    "conversations_used_this_month",
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,6 +108,23 @@ export async function PUT(
       { error: "plan_status invalido" },
       { status: 400 }
     );
+  }
+
+  // Auto-sync limits when plan_tier changes (unless limits are explicitly provided)
+  if (update.plan_tier) {
+    const planConfig = PLANS[update.plan_tier as PlanTier];
+    if (planConfig) {
+      // Only auto-set limits if they weren't explicitly provided in this request
+      if (body.max_properties === undefined) {
+        update.max_properties = planConfig.limits.maxProperties;
+      }
+      if (body.max_agents === undefined) {
+        update.max_agents = planConfig.limits.maxAgents;
+      }
+      if (body.max_conversations_per_month === undefined) {
+        update.max_conversations_per_month = planConfig.limits.maxConversationsPerMonth;
+      }
+    }
   }
 
   update.updated_at = new Date().toISOString();

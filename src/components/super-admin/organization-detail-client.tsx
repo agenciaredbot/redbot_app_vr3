@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PLANS } from "@/config/plans";
+import type { PlanTier } from "@/lib/supabase/types";
 
 interface Member {
   id: string;
@@ -56,6 +58,8 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
   const [maxAgents, setMaxAgents] = useState(0);
   const [maxConversations, setMaxConversations] = useState(0);
   const [isActive, setIsActive] = useState(true);
+  const [trialEndsAt, setTrialEndsAt] = useState("");
+  const [quickActionLoading, setQuickActionLoading] = useState(false);
 
   const fetchOrg = useCallback(async () => {
     setLoading(true);
@@ -71,6 +75,7 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
         setMaxAgents(org.max_agents || 0);
         setMaxConversations(org.max_conversations_per_month || 0);
         setIsActive(org.is_active !== false);
+        setTrialEndsAt(org.trial_ends_at ? (org.trial_ends_at as string).slice(0, 10) : "");
       }
     } finally {
       setLoading(false);
@@ -95,6 +100,7 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
           max_agents: maxAgents,
           max_conversations_per_month: maxConversations,
           is_active: isActive,
+          trial_ends_at: trialEndsAt ? new Date(trialEndsAt + "T23:59:59Z").toISOString() : null,
         }),
       });
       if (res.ok) {
@@ -128,6 +134,79 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
     } finally {
       setDeleting(false);
     }
+  };
+
+  // Auto-sync limits when plan tier changes in the dropdown
+  const handlePlanTierChange = (newTier: string) => {
+    setPlanTier(newTier);
+    const config = PLANS[newTier as PlanTier];
+    if (config) {
+      setMaxProperties(config.limits.maxProperties);
+      setMaxAgents(config.limits.maxAgents);
+      setMaxConversations(config.limits.maxConversationsPerMonth);
+    }
+  };
+
+  // Quick actions
+  const quickAction = async (payload: Record<string, unknown>, successMsg: string) => {
+    setQuickActionLoading(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/super-admin/organizations/${orgId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setFeedback({ type: "success", message: successMsg });
+        await fetchOrg();
+      } else {
+        const err = await res.json();
+        setFeedback({ type: "error", message: err.error || "Error" });
+      }
+    } finally {
+      setQuickActionLoading(false);
+    }
+  };
+
+  const handleActivateDemo = (tier: PlanTier, days: number) => {
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + days);
+    quickAction(
+      {
+        plan_tier: tier,
+        plan_status: "trialing",
+        is_active: true,
+        trial_ends_at: trialEnd.toISOString(),
+      },
+      `Demo ${PLANS[tier].name} activado por ${days} días`
+    );
+  };
+
+  const handleFreeUpgrade = (tier: PlanTier) => {
+    quickAction(
+      {
+        plan_tier: tier,
+        plan_status: "active",
+        is_active: true,
+        trial_ends_at: null,
+      },
+      `Plan ${PLANS[tier].name} activado gratis (sin expiración)`
+    );
+  };
+
+  const handleDeactivateOrg = () => {
+    quickAction(
+      { plan_status: "canceled", is_active: false },
+      "Organización desactivada"
+    );
+  };
+
+  const handleResetConversations = () => {
+    quickAction(
+      { conversations_used_this_month: 0 },
+      "Contador de conversaciones reiniciado"
+    );
   };
 
   if (loading || !data) {
@@ -288,7 +367,7 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
                   <label className="block text-sm text-text-secondary mb-1">Plan</label>
                   <select
                     value={planTier}
-                    onChange={(e) => setPlanTier(e.target.value)}
+                    onChange={(e) => handlePlanTierChange(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl bg-white/[0.05] border border-border-glass text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
                   >
                     <option value="basic">Basic</option>
@@ -337,6 +416,16 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
                     className="w-full px-4 py-2.5 rounded-xl bg-white/[0.05] border border-border-glass text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Trial expira</label>
+                  <input
+                    type="date"
+                    value={trialEndsAt}
+                    onChange={(e) => setTrialEndsAt(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white/[0.05] border border-border-glass text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
+                  />
+                  <p className="text-[11px] text-text-muted mt-1">Dejar vacío = sin expiración</p>
+                </div>
                 <div className="flex items-end">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -349,6 +438,11 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
                   </label>
                 </div>
               </div>
+              <div className="mt-1 p-2 rounded-lg bg-accent-blue/5 border border-accent-blue/10">
+                <p className="text-[11px] text-accent-blue/70">
+                  Al cambiar el plan, los límites se ajustan automáticamente. Puedes personalizarlos arriba si necesitas valores diferentes.
+                </p>
+              </div>
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -356,6 +450,88 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
               >
                 {saving ? "Guardando..." : "Guardar cambios"}
               </button>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="border-t border-border-glass pt-8">
+              <h3 className="text-lg font-semibold text-text-primary mb-2">Acciones rápidas</h3>
+              <p className="text-sm text-text-muted mb-4">
+                Asigna planes sin pago, activa demos o desactiva organizaciones con un solo clic.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Demo buttons */}
+                <div className="bg-white/[0.03] border border-border-glass rounded-xl p-4">
+                  <h4 className="text-sm font-medium text-text-primary mb-1">Activar demo</h4>
+                  <p className="text-xs text-text-muted mb-3">Trial gratuito con fecha de expiración</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(["basic", "power", "omni"] as PlanTier[]).map((tier) => (
+                      <div key={tier} className="flex gap-1">
+                        <button
+                          onClick={() => handleActivateDemo(tier, 15)}
+                          disabled={quickActionLoading}
+                          className="px-3 py-1.5 text-xs rounded-lg bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20 hover:bg-accent-cyan/20 disabled:opacity-50 transition-colors"
+                        >
+                          {PLANS[tier].name} 15d
+                        </button>
+                        <button
+                          onClick={() => handleActivateDemo(tier, 30)}
+                          disabled={quickActionLoading}
+                          className="px-3 py-1.5 text-xs rounded-lg bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20 hover:bg-accent-cyan/20 disabled:opacity-50 transition-colors"
+                        >
+                          30d
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Free upgrade buttons */}
+                <div className="bg-white/[0.03] border border-border-glass rounded-xl p-4">
+                  <h4 className="text-sm font-medium text-text-primary mb-1">Upgrade gratis</h4>
+                  <p className="text-xs text-text-muted mb-3">Plan activo sin pago ni expiración</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(["basic", "power", "omni"] as PlanTier[]).map((tier) => (
+                      <button
+                        key={tier}
+                        onClick={() => handleFreeUpgrade(tier)}
+                        disabled={quickActionLoading}
+                        className="px-3 py-1.5 text-xs rounded-lg bg-accent-green/10 text-accent-green border border-accent-green/20 hover:bg-accent-green/20 disabled:opacity-50 transition-colors"
+                      >
+                        {PLANS[tier].name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Utility actions */}
+                <div className="bg-white/[0.03] border border-border-glass rounded-xl p-4">
+                  <h4 className="text-sm font-medium text-text-primary mb-1">Utilidades</h4>
+                  <p className="text-xs text-text-muted mb-3">Acciones de mantenimiento</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={handleResetConversations}
+                      disabled={quickActionLoading}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-accent-blue/10 text-accent-blue border border-accent-blue/20 hover:bg-accent-blue/20 disabled:opacity-50 transition-colors"
+                    >
+                      Reiniciar conversaciones
+                    </button>
+                    <button
+                      onClick={handleDeactivateOrg}
+                      disabled={quickActionLoading}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-accent-orange/10 text-accent-orange border border-accent-orange/20 hover:bg-accent-orange/20 disabled:opacity-50 transition-colors"
+                    >
+                      Desactivar org
+                    </button>
+                  </div>
+                </div>
+              </div>
+              {quickActionLoading && (
+                <div className="mt-3 flex items-center gap-2 text-sm text-text-muted">
+                  <div className="w-4 h-4 border-2 border-accent-blue border-t-transparent rounded-full animate-spin" />
+                  Aplicando...
+                </div>
+              )}
             </div>
 
             {/* Danger Zone */}
