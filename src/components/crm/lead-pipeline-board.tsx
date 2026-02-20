@@ -28,12 +28,13 @@ interface LeadsByStage {
 
 interface LeadPipelineBoardProps {
   filters: LeadFiltersState;
+  initialLeadId?: string | null;
 }
 
-export function LeadPipelineBoard({ filters }: LeadPipelineBoardProps) {
+export function LeadPipelineBoard({ filters, initialLeadId }: LeadPipelineBoardProps) {
   const [leadsByStage, setLeadsByStage] = useState<LeadsByStage>({});
   const [loading, setLoading] = useState(true);
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeadId ?? null);
   const [draggedLead, setDraggedLead] = useState<LeadCard | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { LeadTable } from "./lead-table";
 import { LeadPipelineBoard } from "./lead-pipeline-board";
 import { LeadFilters } from "./lead-filters";
@@ -15,8 +16,23 @@ import {
 type ViewMode = "pipeline" | "table";
 
 export function LeadsPageClient() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [view, setView] = useState<ViewMode>("pipeline");
   const [filters, setFilters] = useState<LeadFiltersState>(EMPTY_FILTERS);
+
+  // Deep-link: read ?lead=<id> from URL to auto-open a specific lead
+  const [initialLeadId] = useState(() => searchParams.get("lead"));
+
+  // Clean the query param from the URL after reading it
+  useEffect(() => {
+    if (initialLeadId) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("lead");
+      router.replace(url.pathname + url.search, { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFiltersChange = (newFilters: LeadFiltersState) => {
     setFilters(newFilters);
@@ -102,9 +118,9 @@ export function LeadsPageClient() {
 
       {/* Content */}
       {view === "pipeline" ? (
-        <LeadPipelineBoard filters={filters} />
+        <LeadPipelineBoard filters={filters} initialLeadId={initialLeadId} />
       ) : (
-        <LeadTable filters={filters} />
+        <LeadTable filters={filters} initialLeadId={initialLeadId} />
       )}
     </div>
   );

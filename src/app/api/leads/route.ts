@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { leadCreateSchema } from "@/lib/validators/lead";
+import { sendNewLeadNotification } from "@/lib/email/send-new-lead-notification";
 
 export async function GET(request: NextRequest) {
   const authResult = await getAuthContext();
@@ -155,6 +156,9 @@ export async function POST(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Fire-and-forget: send email notification to org admins
+  void sendNewLeadNotification(organizationId, data);
 
   return NextResponse.json({ lead: data }, { status: 201 });
 }

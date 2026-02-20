@@ -32,13 +32,14 @@ interface LeadsResponse {
 
 interface LeadTableProps {
   filters: LeadFiltersState;
+  initialLeadId?: string | null;
 }
 
-export function LeadTable({ filters }: LeadTableProps) {
+export function LeadTable({ filters, initialLeadId }: LeadTableProps) {
   const [data, setData] = useState<LeadsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeadId ?? null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchLeads = useCallback(async () => {
