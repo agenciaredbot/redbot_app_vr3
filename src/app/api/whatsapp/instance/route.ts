@@ -3,6 +3,7 @@ import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   createInstance,
+  connectInstance,
   deleteInstance,
   logoutInstance,
   buildInstanceName,
@@ -90,9 +91,23 @@ export async function POST(request: NextRequest) {
       throw new Error(dbError.message);
     }
 
+    // Get QR code — try from createInstance response first, then fetch explicitly
+    let qrBase64 = evoResponse.qrcode?.base64 || null;
+
+    if (!qrBase64) {
+      console.log("[whatsapp] No QR in createInstance response, fetching via connectInstance...");
+      try {
+        const qrResponse = await connectInstance(instanceName);
+        qrBase64 = qrResponse.base64 || null;
+      } catch (qrErr) {
+        console.warn("[whatsapp] connectInstance failed (QR not available yet):", qrErr);
+        // Not fatal — user can click "Generar QR" manually
+      }
+    }
+
     return NextResponse.json({
       instance,
-      qrcode: evoResponse.qrcode?.base64 || null,
+      qrcode: qrBase64,
     });
   } catch (err) {
     console.error("[whatsapp] Error creating instance:", err);

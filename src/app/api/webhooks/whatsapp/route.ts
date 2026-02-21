@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyWebhookSecret, sendTextMessage, extractMessageText, jidToPhone } from "@/lib/evolution/client";
+import { verifyWebhookSecret, sendTextMessage, extractMessageText, jidToPhone, fetchInstanceInfo } from "@/lib/evolution/client";
 import { processMessage } from "@/lib/anthropic/process-message";
 import {
   findOrCreateConversation,
@@ -232,6 +232,17 @@ async function handleConnectionUpdate(payload: WebhookConnectionPayload) {
       updates.connection_status = "connected";
       updates.connected_at = new Date().toISOString();
       updates.disconnected_at = null;
+
+      // Try to fetch the connected phone number
+      try {
+        const info = await fetchInstanceInfo(instanceName);
+        if (info.ownerJid) {
+          updates.connected_phone = jidToPhone(info.ownerJid);
+          console.log(`[wa-webhook] Connected phone: ${updates.connected_phone}`);
+        }
+      } catch (phoneErr) {
+        console.warn("[wa-webhook] Could not fetch phone number:", phoneErr);
+      }
       break;
     case "close":
       updates.connection_status = "disconnected";

@@ -9,10 +9,15 @@ import type { WhatsAppInstance } from "@/lib/evolution/types";
 type ViewState =
   | "loading"
   | "no-instance"
-  | "connecting"
+  | "connecting"      // Has instance, waiting for QR scan
+  | "disconnected"    // Has instance, but disconnected — show reconnect
   | "connected"
   | "error"
+  | "timeout"         // Polling timed out
   | "upgrade-required";
+
+const POLLING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max polling
+const POLLING_INTERVAL_MS = 5000;          // Poll every 5 seconds
 
 export function WhatsAppChannelClient() {
   const [instance, setInstance] = useState<WhatsAppInstance | null>(null);
@@ -21,7 +26,10 @@ export function WhatsAppChannelClient() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [pollingRemaining, setPollingRemaining] = useState<number | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingStartRef = useRef<number | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Fetch instance data ──
   const fetchInstance = useCallback(async () => {
@@ -34,17 +42,16 @@ export function WhatsAppChannelClient() {
         switch (data.instance.connection_status) {
           case "connected":
             setViewState("connected");
-            stopPolling();
             break;
           case "connecting":
             setViewState("connecting");
             break;
           case "disconnected":
           case "failed":
-            setViewState("connecting"); // Show reconnect UI
+            setViewState("disconnected");
             break;
           default:
-            setViewState("connecting");
+            setViewState("disconnected");
         }
       } else {
         setViewState("no-instance");
@@ -57,6 +64,17 @@ export function WhatsAppChannelClient() {
 
   // ── Polling for connection status ──
   const pollStatus = useCallback(async () => {
+    // Check timeout
+    if (pollingStartRef.current) {
+      const elapsed = Date.now() - pollingStartRef.current;
+      if (elapsed >= POLLING_TIMEOUT_MS) {
+        stopPolling();
+        setViewState("timeout");
+        setQrCode(null);
+        return;
+      }
+    }
+
     try {
       const res = await fetch("/api/whatsapp/instance/status");
       const data = await res.json();
@@ -77,7 +95,26 @@ export function WhatsAppChannelClient() {
 
   const startPolling = useCallback(() => {
     stopPolling();
-    pollingRef.current = setInterval(pollStatus, 5000);
+    pollingStartRef.current = Date.now();
+    setPollingRemaining(Math.floor(POLLING_TIMEOUT_MS / 1000));
+
+    // Poll status
+    pollingRef.current = setInterval(pollStatus, POLLING_INTERVAL_MS);
+
+    // Update countdown every second
+    countdownRef.current = setInterval(() => {
+      if (pollingStartRef.current) {
+        const elapsed = Date.now() - pollingStartRef.current;
+        const remaining = Math.max(0, Math.floor((POLLING_TIMEOUT_MS - elapsed) / 1000));
+        setPollingRemaining(remaining);
+
+        if (remaining <= 0) {
+          stopPolling();
+          setViewState("timeout");
+          setQrCode(null);
+        }
+      }
+    }, 1000);
   }, [pollStatus]);
 
   function stopPolling() {
@@ -85,6 +122,12 @@ export function WhatsAppChannelClient() {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+    pollingStartRef.current = null;
+    setPollingRemaining(null);
   }
 
   useEffect(() => {
@@ -147,7 +190,7 @@ export function WhatsAppChannelClient() {
     }
   };
 
-  // ── Disconnect (logout) ──
+  // ── Disconnect (logout + delete) ──
   const handleDisconnect = async () => {
     if (!confirm("¿Desconectar WhatsApp? Los mensajes ya no serán respondidos automáticamente.")) {
       return;
@@ -168,6 +211,7 @@ export function WhatsAppChannelClient() {
 
       setInstance(null);
       setQrCode(null);
+      stopPolling();
       setViewState("no-instance");
       setSuccess("WhatsApp desconectado");
     } catch (err) {
@@ -175,6 +219,13 @@ export function WhatsAppChannelClient() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Format remaining time as M:SS
+  const formatRemaining = (seconds: number): string => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   // ── Loading state ──
@@ -255,9 +306,14 @@ export function WhatsAppChannelClient() {
                 Esperando conexión
               </span>
             )}
-            {(viewState === "no-instance" || viewState === "error") && (
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/[0.05] text-text-muted border border-border-glass">
+            {viewState === "disconnected" && (
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
                 Desconectado
+              </span>
+            )}
+            {(viewState === "no-instance" || viewState === "error" || viewState === "timeout") && (
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/[0.05] text-text-muted border border-border-glass">
+                Sin conectar
               </span>
             )}
           </div>
@@ -313,6 +369,15 @@ export function WhatsAppChannelClient() {
               </div>
             )}
 
+            {/* Polling status indicator */}
+            {pollingRemaining !== null && (
+              <div className="text-center">
+                <p className="text-xs text-text-muted">
+                  Esperando conexión... ({formatRemaining(pollingRemaining)} restante)
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end">
               <GlassButton
                 onClick={handleDisconnect}
@@ -321,6 +386,98 @@ export function WhatsAppChannelClient() {
                 size="sm"
               >
                 Cancelar
+              </GlassButton>
+            </div>
+          </div>
+        )}
+
+        {/* ── Disconnected: Has instance but not connected ── */}
+        {viewState === "disconnected" && (
+          <div className="text-center py-8 space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-orange-500/10 flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-orange-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-text-primary font-medium">
+                WhatsApp desconectado
+              </p>
+              <p className="text-sm text-text-muted mt-1">
+                La instancia existe pero no está conectada. Genera un nuevo código QR para reconectar.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <GlassButton
+                onClick={handleReconnect}
+                disabled={actionLoading}
+                variant="primary"
+              >
+                {actionLoading ? "Generando..." : "Reconectar WhatsApp"}
+              </GlassButton>
+              <GlassButton
+                onClick={handleDisconnect}
+                disabled={actionLoading}
+                variant="ghost"
+                size="sm"
+              >
+                Eliminar instancia
+              </GlassButton>
+            </div>
+          </div>
+        )}
+
+        {/* ── Timeout: Polling timed out ── */}
+        {viewState === "timeout" && (
+          <div className="text-center py-8 space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-amber-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-text-primary font-medium">
+                Tiempo de espera agotado
+              </p>
+              <p className="text-sm text-text-muted mt-1">
+                No se detectó conexión en 5 minutos. Verifica que escaneaste el QR correctamente e intenta de nuevo.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <GlassButton
+                onClick={handleReconnect}
+                disabled={actionLoading}
+                variant="primary"
+              >
+                {actionLoading ? "Generando..." : "Intentar de nuevo"}
+              </GlassButton>
+              <GlassButton
+                onClick={handleDisconnect}
+                disabled={actionLoading}
+                variant="ghost"
+                size="sm"
+              >
+                Eliminar instancia
               </GlassButton>
             </div>
           </div>

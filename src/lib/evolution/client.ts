@@ -31,10 +31,15 @@ const WEBHOOK_SECRET = process.env.EVOLUTION_WEBHOOK_SECRET || "";
 // Base HTTP helper
 // ============================================================
 
-async function evoRequest<T>(
+/**
+ * Raw request helper — returns parsed JSON without type assertions.
+ * Used internally for debugging and flexible parsing.
+ */
+async function evoRequestRaw(
   path: string,
   options: RequestInit = {}
-): Promise<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
   if (!EVOLUTION_API_URL) {
     throw new Error("EVOLUTION_API_URL no está configurada");
   }
@@ -45,6 +50,8 @@ async function evoRequest<T>(
   // Remove trailing slash from base URL
   const baseUrl = EVOLUTION_API_URL.replace(/\/$/, "");
   const url = `${baseUrl}${path}`;
+
+  console.log(`[evolution] → ${options.method || "GET"} ${path}`);
 
   const res = await fetch(url, {
     ...options,
@@ -57,7 +64,8 @@ async function evoRequest<T>(
 
   // Some endpoints return empty body (204)
   if (res.status === 204) {
-    return {} as T;
+    console.log(`[evolution] ← 204 No Content`);
+    return {};
   }
 
   const data = await res.json();
@@ -70,12 +78,18 @@ async function evoRequest<T>(
     console.error("[evolution] API error:", {
       status: res.status,
       path,
-      data,
+      data: JSON.stringify(data).slice(0, 500),
     });
     throw new Error(errorMsg);
   }
 
-  return data as T;
+  // Log successful response (truncated for readability)
+  console.log(
+    `[evolution] ← ${res.status} ${path}:`,
+    JSON.stringify(data).slice(0, 300)
+  );
+
+  return data;
 }
 
 // ============================================================
@@ -101,8 +115,8 @@ export async function createInstance(
     integration: "WHATSAPP-BAILEYS",
     webhook: {
       url: `${WEBHOOK_BASE_URL}/api/webhooks/whatsapp`,
-      webhook_by_events: true,
-      webhook_base64: false,
+      webhookByEvents: false,
+      webhookBase64: false,
       events: webhookEvents,
       ...(WEBHOOK_SECRET && { headers: { "x-webhook-secret": WEBHOOK_SECRET } }),
     },
@@ -111,10 +125,33 @@ export async function createInstance(
     msgCall: "Lo siento, no puedo recibir llamadas. Por favor, envía un mensaje de texto.",
   };
 
-  return evoRequest<InstanceResponse>("/instance/create", {
+  const data = await evoRequestRaw("/instance/create", {
     method: "POST",
     body: JSON.stringify(body),
   });
+
+  // Normalize response — Evolution API may return different structures
+  const result: InstanceResponse = {
+    instance: data.instance || { instanceName, instanceId: "", status: "created" },
+    hash: data.hash || data.token || "",
+    qrcode: undefined,
+    settings: data.settings,
+    webhook: data.webhook,
+  };
+
+  // QR code can come in different locations depending on API version
+  if (data.qrcode?.base64) {
+    result.qrcode = data.qrcode;
+  } else if (data.qrcode?.pairingCode) {
+    // Some versions use pairingCode instead of base64
+    result.qrcode = { base64: data.qrcode.pairingCode, code: data.qrcode.code || "" };
+  }
+
+  console.log(
+    `[evolution] createInstance result: hasQR=${!!result.qrcode}, hash=${result.hash ? "yes" : "no"}`
+  );
+
+  return result;
 }
 
 /**
@@ -124,20 +161,98 @@ export async function createInstance(
 export async function connectInstance(
   instanceName: string
 ): Promise<QRCodeResponse> {
-  return evoRequest<QRCodeResponse>(
-    `/instance/connect/${instanceName}`
-  );
+  const data = await evoRequestRaw(`/instance/connect/${instanceName}`);
+
+  // Normalize response — handle different structures
+  // Could be: { base64: "...", code: "..." }
+  // Or:       { qrcode: { base64: "...", code: "..." } }
+  // Or:       { pairingCode: "...", code: "..." }
+  const qr: QRCodeResponse = {
+    base64: data.base64 || data.qrcode?.base64 || data.pairingCode || "",
+    code: data.code || data.qrcode?.code || "",
+  };
+
+  if (!qr.base64) {
+    console.warn("[evolution] connectInstance: no QR base64 in response:", JSON.stringify(data).slice(0, 300));
+  }
+
+  return qr;
 }
 
 /**
  * Get the current connection state of an instance.
+ * Handles multiple response formats from Evolution API.
  */
 export async function getConnectionState(
   instanceName: string
 ): Promise<ConnectionStateResponse> {
-  return evoRequest<ConnectionStateResponse>(
-    `/instance/connectionState/${instanceName}`
-  );
+  const data = await evoRequestRaw(`/instance/connectionState/${instanceName}`);
+
+  // Normalize response — handle different structures:
+  // Format 1: { instance: "name", state: "open" }
+  // Format 2: { state: "open" }
+  // Format 3: { instance: { state: "open" } }
+  // Format 4: Array response: [{ instance: "name", state: "open" }]
+
+  let state: string;
+
+  if (Array.isArray(data)) {
+    // Array format — take first element
+    state = data[0]?.state || "close";
+  } else if (typeof data.state === "string") {
+    state = data.state;
+  } else if (typeof data.state === "object" && data.state?.state) {
+    state = data.state.state;
+  } else if (typeof data.instance === "object" && data.instance?.state) {
+    state = data.instance.state;
+  } else {
+    console.warn("[evolution] getConnectionState: unexpected format:", JSON.stringify(data).slice(0, 300));
+    state = "close";
+  }
+
+  // Normalize state values
+  const normalizedState = normalizeConnectionState(state);
+
+  return {
+    instance: typeof data.instance === "string" ? data.instance : instanceName,
+    state: normalizedState,
+  };
+}
+
+/**
+ * Normalize connection state to our expected values.
+ * Evolution API might return various state strings.
+ */
+function normalizeConnectionState(state: string): "open" | "close" | "connecting" {
+  const s = state.toLowerCase();
+  if (s === "open" || s === "connected") return "open";
+  if (s === "close" || s === "closed" || s === "disconnected") return "close";
+  if (s === "connecting") return "connecting";
+  console.warn(`[evolution] Unknown connection state: "${state}", treating as "close"`);
+  return "close";
+}
+
+/**
+ * Fetch instance info including connected phone number.
+ * Uses /instance/fetchInstances endpoint.
+ */
+export async function fetchInstanceInfo(
+  instanceName: string
+): Promise<{ ownerJid?: string; profileName?: string }> {
+  try {
+    const data = await evoRequestRaw(`/instance/fetchInstances?instanceName=${instanceName}`);
+
+    // Response can be array or object
+    const instance = Array.isArray(data) ? data[0] : data;
+
+    return {
+      ownerJid: instance?.instance?.owner || instance?.owner || undefined,
+      profileName: instance?.instance?.profileName || instance?.profileName || undefined,
+    };
+  } catch (err) {
+    console.warn("[evolution] fetchInstanceInfo error:", err);
+    return {};
+  }
 }
 
 /**
@@ -147,7 +262,7 @@ export async function getConnectionState(
 export async function logoutInstance(
   instanceName: string
 ): Promise<void> {
-  await evoRequest<unknown>(`/instance/logout/${instanceName}`, {
+  await evoRequestRaw(`/instance/logout/${instanceName}`, {
     method: "DELETE",
   });
 }
@@ -158,7 +273,7 @@ export async function logoutInstance(
 export async function deleteInstance(
   instanceName: string
 ): Promise<void> {
-  await evoRequest<unknown>(`/instance/delete/${instanceName}`, {
+  await evoRequestRaw(`/instance/delete/${instanceName}`, {
     method: "DELETE",
   });
 }
@@ -169,7 +284,7 @@ export async function deleteInstance(
 export async function restartInstance(
   instanceName: string
 ): Promise<void> {
-  await evoRequest<unknown>(`/instance/restart/${instanceName}`, {
+  await evoRequestRaw(`/instance/restart/${instanceName}`, {
     method: "PUT",
   });
 }
@@ -193,7 +308,7 @@ export async function sendTextMessage(
   // Strip @s.whatsapp.net if present — Evolution handles it
   const cleanNumber = number.replace(/@s\.whatsapp\.net$/, "");
 
-  return evoRequest<SendTextResponse>(
+  return evoRequestRaw(
     `/message/sendText/${instanceName}`,
     {
       method: "POST",
