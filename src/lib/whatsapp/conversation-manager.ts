@@ -97,6 +97,7 @@ export async function findOrCreateConversation(
  *
  * Returns the last N messages from the conversation,
  * formatted as alternating user/assistant messages.
+ * Ensures proper alternation required by Claude API.
  */
 export async function loadConversationHistory(
   conversationId: string,
@@ -104,45 +105,60 @@ export async function loadConversationHistory(
 ): Promise<Anthropic.MessageParam[]> {
   const supabase = createAdminClient();
 
-  const { data: messages } = await supabase
+  const { data: messages, error } = await supabase
     .from("messages")
     .select("role, content, tool_name, tool_input, tool_result")
     .eq("conversation_id", conversationId)
+    .in("role", ["user", "assistant"]) // Only get user/assistant messages
     .order("created_at", { ascending: true })
     .limit(limit);
 
+  if (error) {
+    console.error(`[wa-convo] Error loading history for ${conversationId}:`, error.message);
+    return [];
+  }
+
   if (!messages || messages.length === 0) {
+    console.log(`[wa-convo] No history for conversation ${conversationId}`);
     return [];
   }
 
   // Convert DB messages to Anthropic format
-  // Only include user and assistant messages with string content
+  // Only include user and assistant messages with non-empty string content
   const anthropicMessages: Anthropic.MessageParam[] = [];
 
   for (const msg of messages) {
-    if (msg.role === "user" && msg.content) {
+    if ((msg.role === "user" || msg.role === "assistant") && msg.content && msg.content.trim()) {
       anthropicMessages.push({
-        role: "user",
-        content: msg.content,
-      });
-    } else if (msg.role === "assistant" && msg.content) {
-      anthropicMessages.push({
-        role: "assistant",
+        role: msg.role as "user" | "assistant",
         content: msg.content,
       });
     }
-    // Skip tool_call and tool_result for simplicity
-    // (they'll be re-executed if needed)
   }
 
   // Ensure messages alternate correctly (user, assistant, user, assistant...)
-  // Remove consecutive same-role messages
+  // When consecutive same-role messages exist, merge them or keep the last one
   const cleaned: Anthropic.MessageParam[] = [];
   for (const msg of anthropicMessages) {
     if (cleaned.length === 0 || cleaned[cleaned.length - 1].role !== msg.role) {
       cleaned.push(msg);
+    } else {
+      // Same role consecutive — replace with the latest one
+      cleaned[cleaned.length - 1] = msg;
     }
   }
+
+  // Ensure history starts with "user" (Claude requirement)
+  while (cleaned.length > 0 && cleaned[0].role !== "user") {
+    cleaned.shift();
+  }
+
+  // Ensure history ends with "assistant" (so the new user message comes next)
+  while (cleaned.length > 0 && cleaned[cleaned.length - 1].role !== "assistant") {
+    cleaned.pop();
+  }
+
+  console.log(`[wa-convo] History: ${messages.length} raw → ${cleaned.length} cleaned for ${conversationId}`);
 
   return cleaned;
 }

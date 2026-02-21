@@ -94,6 +94,8 @@ Estás respondiendo por WhatsApp. Reglas adicionales:
   while (loopCount < maxLoops) {
     loopCount++;
 
+    console.log(`[processMessage] Loop ${loopCount}/${maxLoops}: sending ${currentMessages.length} messages to Claude (channel=${channel})`);
+
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5-20250929",
       max_tokens: channel === "whatsapp" ? 512 : 1024,
@@ -101,6 +103,8 @@ Estás respondiendo por WhatsApp. Reglas adicionales:
       messages: currentMessages,
       tools: agentTools,
     });
+
+    console.log(`[processMessage] Loop ${loopCount}: stop_reason=${response.stop_reason}, content_blocks=${response.content.length}, usage=${JSON.stringify(response.usage)}`);
 
     // Extract text and tool_use blocks
     const textBlocks = response.content.filter((b) => b.type === "text");
@@ -110,6 +114,8 @@ Estás respondiendo por WhatsApp. Reglas adicionales:
     finalText = textBlocks.map((b) => ("text" in b ? b.text : "")).join("");
 
     if (response.stop_reason === "tool_use" && toolBlocks.length > 0) {
+      console.log(`[processMessage] Loop ${loopCount}: executing ${toolBlocks.length} tool(s): ${toolBlocks.map(b => b.type === "tool_use" ? b.name : "?").join(", ")}`);
+
       // Add assistant message with full content (text + tool_use)
       currentMessages.push({
         role: "assistant",
@@ -122,20 +128,32 @@ Estás respondiendo por WhatsApp. Reglas adicionales:
         if (block.type === "tool_use") {
           toolsUsed.push(block.name);
 
-          const result = await handleToolCall(
-            block.name,
-            block.input as Record<string, unknown>,
-            organizationId,
-            conversationId,
-            orgSlug,
-            channelContext ? { channel, phone: channelContext.phone } : undefined
-          );
+          try {
+            const result = await handleToolCall(
+              block.name,
+              block.input as Record<string, unknown>,
+              organizationId,
+              conversationId,
+              orgSlug,
+              channelContext ? { channel, phone: channelContext.phone } : undefined
+            );
 
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: result,
-          });
+            console.log(`[processMessage] Tool ${block.name}: result (${result.length} chars)`);
+
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: result,
+            });
+          } catch (toolErr) {
+            console.error(`[processMessage] Tool ${block.name} ERROR:`, toolErr instanceof Error ? toolErr.message : toolErr);
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: JSON.stringify({ error: `Tool execution failed: ${toolErr instanceof Error ? toolErr.message : "unknown error"}` }),
+              is_error: true,
+            });
+          }
         }
       }
 
@@ -150,6 +168,7 @@ Estás respondiendo por WhatsApp. Reglas adicionales:
     }
 
     // No more tool calls — we're done
+    console.log(`[processMessage] Done after ${loopCount} loop(s). Response: ${finalText.length} chars`);
     break;
   }
 

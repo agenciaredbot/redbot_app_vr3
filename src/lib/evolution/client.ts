@@ -305,10 +305,12 @@ export async function sendTextMessage(
   number: string,
   text: string
 ): Promise<SendTextResponse> {
-  // Strip @s.whatsapp.net if present — Evolution handles it
-  const cleanNumber = number.replace(/@s\.whatsapp\.net$/, "");
+  // Strip @s.whatsapp.net and @lid if present — Evolution expects clean number
+  const cleanNumber = number.replace(/@(s\.whatsapp\.net|lid)$/, "");
 
-  return evoRequestRaw(
+  console.log(`[evolution] sendTextMessage: instance=${instanceName}, to=${cleanNumber}, textLen=${text.length}`);
+
+  const result = await evoRequestRaw(
     `/message/sendText/${instanceName}`,
     {
       method: "POST",
@@ -319,6 +321,9 @@ export async function sendTextMessage(
       }),
     }
   );
+
+  console.log(`[evolution] sendTextMessage result: ${JSON.stringify(result).slice(0, 200)}`);
+  return result;
 }
 
 // ============================================================

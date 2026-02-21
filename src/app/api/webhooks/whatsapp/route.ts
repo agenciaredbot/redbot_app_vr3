@@ -26,6 +26,8 @@ export const maxDuration = 60;
  * No auth required — uses webhook secret verification.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     // Verify webhook secret
     const headerSecret = request.headers.get("x-webhook-secret");
@@ -66,9 +68,10 @@ export async function POST(request: NextRequest) {
         console.log(`[wa-webhook] Unhandled event: ${event}`);
     }
 
+    console.log(`[wa-webhook] Request completed in ${Date.now() - startTime}ms`);
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("[wa-webhook] TOP-LEVEL ERROR:", err instanceof Error ? err.stack : err);
+    console.error(`[wa-webhook] TOP-LEVEL ERROR (after ${Date.now() - startTime}ms):`, err instanceof Error ? err.stack : err);
     return NextResponse.json({ received: true, error: "Processing error" });
   }
 }
@@ -89,22 +92,27 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
   // Extract text content
   const messageText = extractMessageText(data.message as Record<string, unknown> | undefined);
   if (!messageText) {
-    console.log("[wa-webhook] Non-text message, skipping");
+    console.log(`[wa-webhook] Non-text message (type: ${data.messageType || "unknown"}), skipping`);
     return;
   }
 
   // Resolve remoteJid — handle @lid (Linked ID) format from WhatsApp Business
   let remoteJid = data.key.remoteJid;
 
+  console.log(`[wa-webhook] Raw remoteJid: ${remoteJid}`);
+
   if (remoteJid.endsWith("@lid")) {
     // Evolution API v2+ may use @lid format with remoteJidAlt for the real JID
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const altJid = (data.key as any).remoteJidAlt as string | undefined;
+    const keyData = data.key as any;
+    const altJid = (keyData.remoteJidAlt || keyData.participant) as string | undefined;
+    console.log(`[wa-webhook] @lid detected. remoteJidAlt=${altJid || "NONE"}, participant=${keyData.participant || "NONE"}`);
+
     if (altJid && altJid.endsWith("@s.whatsapp.net")) {
       console.log(`[wa-webhook] Resolved @lid → ${altJid}`);
       remoteJid = altJid;
     } else {
-      console.warn(`[wa-webhook] @lid JID without valid remoteJidAlt: ${remoteJid}, skipping`);
+      console.warn(`[wa-webhook] @lid JID without valid alternative: ${remoteJid}, skipping. Full key: ${JSON.stringify(data.key).slice(0, 300)}`);
       return;
     }
   }
@@ -133,7 +141,7 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
     return;
   }
 
-  console.log(`[wa-webhook] Instance found: active=${waInstance.is_active}, auto_reply=${waInstance.auto_reply}, status=${waInstance.connection_status}`);
+  console.log(`[wa-webhook] Instance found: id=${waInstance.id}, active=${waInstance.is_active}, auto_reply=${waInstance.auto_reply}, status=${waInstance.connection_status}`);
 
   if (!waInstance.is_active || !waInstance.auto_reply) {
     console.log(`[wa-webhook] Instance ${instanceName} is inactive or auto_reply disabled, skipping`);
@@ -154,16 +162,21 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
     return;
   }
 
-  console.log(`[wa-webhook] Org: ${org.slug} (${org.name})`);
+  console.log(`[wa-webhook] Org: ${org.slug} (${org.name}), agent=${org.agent_name}`);
 
   // ── Find or create conversation ──
-  const conversation = await findOrCreateConversation(
-    organizationId,
-    remoteJid,
-    contactName
-  );
-
-  console.log(`[wa-webhook] Conversation: ${conversation.id} (msgs: ${conversation.message_count})`);
+  let conversation;
+  try {
+    conversation = await findOrCreateConversation(
+      organizationId,
+      remoteJid,
+      contactName
+    );
+    console.log(`[wa-webhook] Conversation: ${conversation.id} (msgs: ${conversation.message_count})`);
+  } catch (convErr) {
+    console.error(`[wa-webhook] FATAL: findOrCreateConversation failed:`, convErr instanceof Error ? convErr.stack : convErr);
+    return;
+  }
 
   // ── Check conversation limit (only for new conversations) ──
   if (conversation.message_count === 0) {
@@ -183,7 +196,7 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
   // ── Load conversation history ──
   const history = await loadConversationHistory(conversation.id, 20);
 
-  console.log(`[wa-webhook] History loaded: ${history.length} messages`);
+  console.log(`[wa-webhook] History loaded: ${history.length} messages. Roles: ${history.map(m => m.role).join(",")}`);
 
   // Add the new user message
   const messages = [
@@ -191,30 +204,47 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
     { role: "user" as const, content: messageText },
   ];
 
+  // Safety check: Claude requires user/assistant alternation
+  // loadConversationHistory should ensure this, but double-check
+  if (history.length > 0 && history[history.length - 1].role === "user") {
+    console.warn(`[wa-webhook] BUG: History ends with 'user' role — removing to prevent consecutive user messages`);
+    // Remove the history's trailing user message so we don't have user,user
+    messages.splice(messages.length - 2, 1);
+  }
+
+  console.log(`[wa-webhook] Final messages count: ${messages.length}. Roles: ${messages.map(m => m.role).join(",")}`);
+
   // ── Process with Claude AI ──
   const phone = jidToPhone(remoteJid);
 
   try {
-    console.log(`[wa-webhook] Calling processMessage for org=${org.slug}, phone=${phone}...`);
+    console.log(`[wa-webhook] Calling processMessage for org=${org.slug}, phone=${phone}, msgs=${messages.length}...`);
 
-    const result = await processMessage({
-      messages,
-      organizationId,
-      orgSlug: org.slug,
-      orgContext: {
-        name: org.name,
-        slug: org.slug,
-        agent_name: org.agent_name,
-        agent_personality: org.agent_personality,
-        city: org.city,
-        country: org.country,
-      },
-      channel: "whatsapp",
-      conversationId: conversation.id,
-      channelContext: { phone },
-    });
+    // Wrap processMessage in a timeout to prevent hanging
+    const AI_TIMEOUT_MS = 50_000; // 50s (leave margin for the 60s maxDuration)
+    const result = await Promise.race([
+      processMessage({
+        messages,
+        organizationId,
+        orgSlug: org.slug,
+        orgContext: {
+          name: org.name,
+          slug: org.slug,
+          agent_name: org.agent_name,
+          agent_personality: org.agent_personality,
+          city: org.city,
+          country: org.country,
+        },
+        channel: "whatsapp",
+        conversationId: conversation.id,
+        channelContext: { phone },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("AI processing timed out after 50s")), AI_TIMEOUT_MS)
+      ),
+    ]);
 
-    console.log(`[wa-webhook] AI response: "${result.responseText?.slice(0, 100) || "(empty)"}" | Tools: ${result.toolsUsed.join(", ") || "none"}`);
+    console.log(`[wa-webhook] AI response (${result.responseText?.length || 0} chars): "${result.responseText?.slice(0, 120) || "(empty)"}" | Tools: ${result.toolsUsed.join(", ") || "none"}`);
 
     if (!result.responseText) {
       console.error("[wa-webhook] Empty AI response — no text to send");
@@ -222,9 +252,9 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
     }
 
     // ── Send response via WhatsApp ──
-    console.log(`[wa-webhook] Sending reply to ${remoteJid}...`);
-    await sendTextMessage(instanceName, remoteJid, result.responseText);
-    console.log(`[wa-webhook] Reply sent successfully`);
+    console.log(`[wa-webhook] Sending reply to ${remoteJid} via instance ${instanceName}...`);
+    const sendResult = await sendTextMessage(instanceName, remoteJid, result.responseText);
+    console.log(`[wa-webhook] Reply sent successfully. Evolution response: ${JSON.stringify(sendResult).slice(0, 200)}`);
 
     // ── Persist messages ──
     await persistMessages(
