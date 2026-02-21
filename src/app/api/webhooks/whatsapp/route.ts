@@ -41,15 +41,21 @@ export async function POST(request: NextRequest) {
     // Log the incoming webhook body (truncated for readability)
     console.log(`[wa-webhook] Incoming:`, JSON.stringify(body).slice(0, 500));
 
-    const event = body.event as string;
+    const rawEvent = body.event as string;
     const instanceName = body.instance as string;
 
-    if (!event || !instanceName) {
+    if (!rawEvent || !instanceName) {
       console.warn("[wa-webhook] Missing event or instance in body");
       return NextResponse.json({ received: true });
     }
 
-    console.log(`[wa-webhook] Event: ${event} | Instance: ${instanceName}`);
+    // Normalize event name: Evolution API sends different formats depending on config:
+    //   webhookByEvents: true  → "MESSAGES_UPSERT"   (uppercase, underscore)
+    //   webhookByEvents: false → "messages.upsert"    (lowercase, dot)
+    //   some versions          → "messages_upsert"    (lowercase, underscore)
+    const event = rawEvent.toUpperCase().replace(/\./g, "_");
+
+    console.log(`[wa-webhook] Event: ${rawEvent} → ${event} | Instance: ${instanceName}`);
 
     switch (event) {
       case "MESSAGES_UPSERT":
@@ -65,7 +71,7 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        console.log(`[wa-webhook] Unhandled event: ${event}`);
+        console.log(`[wa-webhook] Unhandled event: ${rawEvent} (normalized: ${event})`);
     }
 
     console.log(`[wa-webhook] Request completed in ${Date.now() - startTime}ms`);
