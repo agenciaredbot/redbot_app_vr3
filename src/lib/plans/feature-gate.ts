@@ -124,7 +124,8 @@ export type FeatureFlag =
   | "customTags"
   | "exportLeads"
   | "customDomain"
-  | "fullCustomization";
+  | "fullCustomization"
+  | "whatsappChannel";
 
 interface FeatureFlagDefinition {
   /** Key in PlanDefinition.limits to check */
@@ -160,6 +161,12 @@ const FEATURE_REGISTRY: Record<FeatureFlag, FeatureFlagDefinition> = {
     planKey: "agentCustomization",
     enabledValue: "full",
     label: "personalización completa del agente",
+    requiredPlan: "power",
+  },
+  whatsappChannel: {
+    planKey: "whatsappChannel",
+    enabledValue: true,
+    label: "canal de WhatsApp",
     requiredPlan: "power",
   },
 };

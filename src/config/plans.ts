@@ -17,6 +17,7 @@ export interface PlanDefinition {
     agentCustomization: "basic" | "full";
     exportLeads: boolean;
     customDomain: boolean;
+    whatsappChannel: boolean;
   };
 }
 
@@ -35,6 +36,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       agentCustomization: "basic",
       exportLeads: false,
       customDomain: false,
+      whatsappChannel: false,
     },
   },
   power: {
@@ -51,6 +53,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       agentCustomization: "full",
       exportLeads: true,
       customDomain: false,
+      whatsappChannel: true,
     },
   },
   omni: {
@@ -67,6 +70,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       agentCustomization: "full",
       exportLeads: true,
       customDomain: true,
+      whatsappChannel: true,
     },
   },
 };

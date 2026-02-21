@@ -38,12 +38,18 @@ function buildPropertyUrl(orgSlug: string, propertySlug: string): string {
   return `${baseUrl.protocol}//${orgSlug}.${baseUrl.host}/propiedades/${propertySlug}`;
 }
 
+export interface ChannelContext {
+  channel: "web" | "whatsapp";
+  phone?: string;
+}
+
 export async function handleToolCall(
   toolName: string,
   toolInput: Record<string, unknown>,
   organizationId: string,
   conversationId?: string,
-  orgSlug?: string
+  orgSlug?: string,
+  channelContext?: ChannelContext
 ): Promise<string> {
   switch (toolName) {
     case "search_properties":
@@ -54,7 +60,8 @@ export async function handleToolCall(
       return registerLead(
         toolInput as unknown as RegisterLeadInput,
         organizationId,
-        conversationId
+        conversationId,
+        channelContext
       );
     default:
       return JSON.stringify({ error: "Herramienta no reconocida" });
@@ -190,9 +197,14 @@ async function getPropertyDetails(
 async function registerLead(
   input: RegisterLeadInput,
   organizationId: string,
-  _conversationId?: string
+  _conversationId?: string,
+  channelContext?: ChannelContext
 ): Promise<string> {
   const supabase = createAdminClient();
+
+  // Determine source and phone based on channel
+  const source = channelContext?.channel === "whatsapp" ? "whatsapp" : "ai_chat";
+  const phone = input.phone || channelContext?.phone || null;
 
   const { data, error } = await supabase
     .from("leads")
@@ -200,14 +212,14 @@ async function registerLead(
       organization_id: organizationId,
       full_name: input.name,
       email: input.email || null,
-      phone: input.phone || null,
+      phone,
       budget: input.budget || null,
       property_summary: input.property_summary || null,
       preferred_zones: input.preferred_zones || null,
       timeline: input.timeline || null,
       notes: input.notes || null,
       initial_property_id: input.interested_property_id || null,
-      source: "ai_chat",
+      source,
       pipeline_stage: input.wants_visit ? "visita_tour" : "nuevo",
     })
     .select("*")
