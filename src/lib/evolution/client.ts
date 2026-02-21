@@ -354,10 +354,11 @@ export function buildInstanceName(orgSlug: string): string {
 /**
  * Extract phone number from WhatsApp JID.
  * "573001234567@s.whatsapp.net" → "+573001234567"
+ * Also handles @lid format and already-prefixed numbers.
  */
 export function jidToPhone(jid: string): string {
   const number = jid.split("@")[0];
-  return `+${number}`;
+  return number.startsWith("+") ? number : `+${number}`;
 }
 
 /**

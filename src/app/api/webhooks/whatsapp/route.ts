@@ -35,10 +35,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Log the incoming webhook body (truncated for readability)
+    console.log(`[wa-webhook] Incoming:`, JSON.stringify(body).slice(0, 500));
+
     const event = body.event as string;
     const instanceName = body.instance as string;
 
     if (!event || !instanceName) {
+      console.warn("[wa-webhook] Missing event or instance in body");
       return NextResponse.json({ received: true });
     }
 
@@ -54,7 +59,6 @@ export async function POST(request: NextRequest) {
         break;
 
       case "QRCODE_UPDATED":
-        // QR codes are fetched via polling in the UI — just log
         console.log(`[wa-webhook] QR updated for ${instanceName}`);
         break;
 
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("[wa-webhook] Error:", err);
+    console.error("[wa-webhook] TOP-LEVEL ERROR:", err instanceof Error ? err.stack : err);
     return NextResponse.json({ received: true, error: "Processing error" });
   }
 }
@@ -77,7 +81,10 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
   const { instance: instanceName, data } = payload;
 
   // Skip messages sent by us (fromMe)
-  if (data.key.fromMe) return;
+  if (data.key.fromMe) {
+    console.log("[wa-webhook] Skipping fromMe message");
+    return;
+  }
 
   // Extract text content
   const messageText = extractMessageText(data.message as Record<string, unknown> | undefined);
@@ -86,7 +93,22 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
     return;
   }
 
-  const remoteJid = data.key.remoteJid;
+  // Resolve remoteJid — handle @lid (Linked ID) format from WhatsApp Business
+  let remoteJid = data.key.remoteJid;
+
+  if (remoteJid.endsWith("@lid")) {
+    // Evolution API v2+ may use @lid format with remoteJidAlt for the real JID
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const altJid = (data.key as any).remoteJidAlt as string | undefined;
+    if (altJid && altJid.endsWith("@s.whatsapp.net")) {
+      console.log(`[wa-webhook] Resolved @lid → ${altJid}`);
+      remoteJid = altJid;
+    } else {
+      console.warn(`[wa-webhook] @lid JID without valid remoteJidAlt: ${remoteJid}, skipping`);
+      return;
+    }
+  }
+
   const contactName = data.pushName || undefined;
 
   // Skip group messages (only handle 1:1 chats)
@@ -95,22 +117,26 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
     return;
   }
 
+  console.log(`[wa-webhook] Processing: "${messageText.slice(0, 80)}" from ${remoteJid} (${contactName || "unknown"})`);
+
   const supabase = createAdminClient();
 
   // ── Resolve organization from instance_name ──
-  const { data: waInstance } = await supabase
+  const { data: waInstance, error: instanceError } = await supabase
     .from("whatsapp_instances")
     .select("id, organization_id, instance_name, is_active, auto_reply, connection_status")
     .eq("instance_name", instanceName)
     .single();
 
   if (!waInstance) {
-    console.error(`[wa-webhook] Unknown instance: ${instanceName}`);
+    console.error(`[wa-webhook] Unknown instance: "${instanceName}" | DB error: ${instanceError?.message || "no row"}`);
     return;
   }
 
+  console.log(`[wa-webhook] Instance found: active=${waInstance.is_active}, auto_reply=${waInstance.auto_reply}, status=${waInstance.connection_status}`);
+
   if (!waInstance.is_active || !waInstance.auto_reply) {
-    console.log(`[wa-webhook] Instance ${instanceName} is inactive or auto_reply disabled`);
+    console.log(`[wa-webhook] Instance ${instanceName} is inactive or auto_reply disabled, skipping`);
     return;
   }
 
@@ -124,9 +150,11 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
     .single();
 
   if (!org) {
-    console.error(`[wa-webhook] Org not found for ${instanceName}`);
+    console.error(`[wa-webhook] Org not found for org_id=${organizationId}`);
     return;
   }
+
+  console.log(`[wa-webhook] Org: ${org.slug} (${org.name})`);
 
   // ── Find or create conversation ──
   const conversation = await findOrCreateConversation(
@@ -135,12 +163,13 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
     contactName
   );
 
+  console.log(`[wa-webhook] Conversation: ${conversation.id} (msgs: ${conversation.message_count})`);
+
   // ── Check conversation limit (only for new conversations) ──
   if (conversation.message_count === 0) {
     const limitCheck = await checkLimit(organizationId, "conversations");
     if (!limitCheck.allowed) {
       console.warn(`[wa-webhook] Conversation limit reached for org ${organizationId}`);
-      // Send a polite limit message
       await sendTextMessage(
         instanceName,
         remoteJid,
@@ -154,6 +183,8 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
   // ── Load conversation history ──
   const history = await loadConversationHistory(conversation.id, 20);
 
+  console.log(`[wa-webhook] History loaded: ${history.length} messages`);
+
   // Add the new user message
   const messages = [
     ...history,
@@ -164,6 +195,8 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
   const phone = jidToPhone(remoteJid);
 
   try {
+    console.log(`[wa-webhook] Calling processMessage for org=${org.slug}, phone=${phone}...`);
+
     const result = await processMessage({
       messages,
       organizationId,
@@ -181,13 +214,17 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
       channelContext: { phone },
     });
 
+    console.log(`[wa-webhook] AI response: "${result.responseText?.slice(0, 100) || "(empty)"}" | Tools: ${result.toolsUsed.join(", ") || "none"}`);
+
     if (!result.responseText) {
-      console.error("[wa-webhook] Empty AI response");
+      console.error("[wa-webhook] Empty AI response — no text to send");
       return;
     }
 
     // ── Send response via WhatsApp ──
+    console.log(`[wa-webhook] Sending reply to ${remoteJid}...`);
     await sendTextMessage(instanceName, remoteJid, result.responseText);
+    console.log(`[wa-webhook] Reply sent successfully`);
 
     // ── Persist messages ──
     await persistMessages(
@@ -198,10 +235,10 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
     );
 
     console.log(
-      `[wa-webhook] Replied to ${remoteJid} via ${instanceName} | Tools: ${result.toolsUsed.join(", ") || "none"}`
+      `[wa-webhook] ✅ Complete: replied to ${remoteJid} via ${instanceName} | Tools: ${result.toolsUsed.join(", ") || "none"}`
     );
   } catch (err) {
-    console.error("[wa-webhook] AI processing error:", err);
+    console.error("[wa-webhook] AI/Send ERROR:", err instanceof Error ? err.stack : err);
     // Send error message to user
     try {
       await sendTextMessage(
@@ -209,8 +246,8 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
         remoteJid,
         "Disculpa, tuve un problema procesando tu mensaje. ¿Podrías intentar de nuevo?"
       );
-    } catch {
-      // Best effort — don't fail silently on the error message
+    } catch (sendErr) {
+      console.error("[wa-webhook] Failed to send error message:", sendErr instanceof Error ? sendErr.message : sendErr);
     }
   }
 }
@@ -222,6 +259,8 @@ async function handleIncomingMessage(payload: WebhookMessagePayload) {
 async function handleConnectionUpdate(payload: WebhookConnectionPayload) {
   const { instance: instanceName, data } = payload;
   const state = data.state;
+
+  console.log(`[wa-webhook] Connection update: ${instanceName} → ${state}`);
 
   const supabase = createAdminClient();
 
@@ -262,7 +301,7 @@ async function handleConnectionUpdate(payload: WebhookConnectionPayload) {
     if (error) {
       console.error(`[wa-webhook] Error updating connection status:`, error.message);
     } else {
-      console.log(`[wa-webhook] ${instanceName} connection: ${state}`);
+      console.log(`[wa-webhook] ${instanceName} connection updated: ${state}`);
     }
   }
 }

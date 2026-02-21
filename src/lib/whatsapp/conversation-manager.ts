@@ -41,7 +41,7 @@ export async function findOrCreateConversation(
   const supabase = createAdminClient();
 
   // Look for existing active conversation
-  const { data: existing } = await supabase
+  const { data: existing, error: findError } = await supabase
     .from("conversations")
     .select("id, organization_id, whatsapp_jid, channel, status, message_count")
     .eq("organization_id", organizationId)
@@ -50,6 +50,7 @@ export async function findOrCreateConversation(
     .single();
 
   if (existing) {
+    console.log(`[wa-convo] Found existing conversation: ${existing.id} (msgs: ${existing.message_count})`);
     // Update last_message_at
     await supabase
       .from("conversations")
@@ -59,7 +60,13 @@ export async function findOrCreateConversation(
     return existing as ConversationRecord;
   }
 
+  if (findError && findError.code !== "PGRST116") {
+    // PGRST116 = "no rows" — expected for new conversations
+    console.warn(`[wa-convo] Unexpected find error:`, findError.message);
+  }
+
   // Create new conversation
+  console.log(`[wa-convo] Creating new conversation for jid=${whatsappJid}, org=${organizationId}`);
   const { data: newConv, error } = await supabase
     .from("conversations")
     .insert({
@@ -77,9 +84,11 @@ export async function findOrCreateConversation(
     .single();
 
   if (error || !newConv) {
+    console.error(`[wa-convo] Failed to create conversation:`, error?.message, error?.details, error?.hint);
     throw new Error(`Failed to create WhatsApp conversation: ${error?.message}`);
   }
 
+  console.log(`[wa-convo] Created conversation: ${newConv.id}`);
   return newConv as ConversationRecord;
 }
 
