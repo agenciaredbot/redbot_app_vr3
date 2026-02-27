@@ -413,7 +413,22 @@ export function checkLimitClient(
   currentCount: number
 ): LimitCheckResult {
   const def = LIMIT_REGISTRY[limitType];
-  const max = org[def.maxColumn] as number;
+  let max = org[def.maxColumn] as number;
+
+  // Fallback: verify denormalized column matches the plan config (same logic as server).
+  // If org column is desynchronized, use the plan's real value.
+  const planConfig = PLANS[org.plan_tier as PlanTier];
+  if (planConfig) {
+    const planMaxKey: keyof PlanDefinition["limits"] =
+      def.maxColumn === "max_properties" ? "maxProperties"
+      : def.maxColumn === "max_agents" ? "maxAgents"
+      : "maxConversationsPerMonth";
+    const planMax = planConfig.limits[planMaxKey] as number;
+
+    if ((planMax === -1 && max !== -1) || (planMax !== -1 && max !== -1 && planMax > max)) {
+      max = planMax;
+    }
+  }
 
   if (max === -1) {
     return { allowed: true, current: currentCount, max: -1, remaining: -1, message: "" };
