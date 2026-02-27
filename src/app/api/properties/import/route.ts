@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { checkLimit } from "@/lib/plans/feature-gate";
 import {
   parseExcelBuffer,
   mapColumns,
@@ -16,12 +17,26 @@ export async function POST(request: NextRequest) {
   const { supabase, organizationId } = authResult;
 
   try {
+    // Check plan limit before processing import
+    const limitCheck = await checkLimit(organizationId, "properties");
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: limitCheck.message,
+          limit: { current: limitCheck.current, max: limitCheck.max },
+        },
+        { status: 403 }
+      );
+    }
     const contentType = request.headers.get("content-type") || "";
 
     let propertiesToInsert: (PropertyInsertData & {
       organization_id: string;
     })[];
     let totalCount: number;
+
+    // For non-unlimited plans, cap import to remaining slots
+    const importCap = limitCheck.max === -1 ? 500 : limitCheck.remaining;
 
     if (contentType.includes("application/json")) {
       // ─── JSON Mode (from preview wizard) ───
@@ -39,6 +54,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: "Máximo 500 propiedades por importación" },
           { status: 400 }
+        );
+      }
+
+      if (importCap < 500 && properties.length > importCap) {
+        return NextResponse.json(
+          {
+            error: `Solo puedes importar ${importCap} propiedades más (${limitCheck.current}/${limitCheck.max} usadas).`,
+            limit: { current: limitCheck.current, max: limitCheck.max, remaining: importCap },
+          },
+          { status: 403 }
         );
       }
 
@@ -149,6 +174,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: "Máximo 500 propiedades por importación" },
           { status: 400 }
+        );
+      }
+
+      if (importCap < 500 && rawRows.length > importCap) {
+        return NextResponse.json(
+          {
+            error: `Solo puedes importar ${importCap} propiedades más (${limitCheck.current}/${limitCheck.max} usadas).`,
+            limit: { current: limitCheck.current, max: limitCheck.max, remaining: importCap },
+          },
+          { status: 403 }
         );
       }
 

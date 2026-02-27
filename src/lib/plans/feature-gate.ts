@@ -242,7 +242,26 @@ export async function checkLimit(
   }
 
   const def = LIMIT_REGISTRY[limitType];
-  const max = org[def.maxColumn] as number;
+  let max = org[def.maxColumn] as number;
+
+  // Fallback: verify denormalized column matches the plan config.
+  // If desynchronized (e.g. plan upgraded but column not updated), use the plan's real value.
+  const planConfig = PLANS[org.plan_tier as PlanTier];
+  if (planConfig) {
+    const planMaxKey: keyof PlanDefinition["limits"] =
+      def.maxColumn === "max_properties" ? "maxProperties"
+      : def.maxColumn === "max_agents" ? "maxAgents"
+      : "maxConversationsPerMonth";
+    const planMax = planConfig.limits[planMaxKey] as number;
+
+    if ((planMax === -1 && max !== -1) || (planMax !== -1 && max !== -1 && planMax > max)) {
+      console.warn(
+        `[feature-gate] Desync: org ${orgId} ${def.maxColumn}=${max} but plan "${org.plan_tier}" says ${planMax}. Auto-healing.`
+      );
+      max = planMax;
+      autoHealOrgLimit(orgId, def.maxColumn, planMax);
+    }
+  }
 
   // Get current count
   let current: number;
@@ -412,6 +431,30 @@ export function checkLimitClient(
       ? ""
       : `Límite de ${def.label} alcanzado (${currentCount}/${max}). ${def.upgradeHint}`,
   };
+}
+
+// ──────────────────────────────────────────────
+//  Auto-heal helpers
+// ──────────────────────────────────────────────
+
+/**
+ * Fix a desynchronized limit column in background (fire-and-forget).
+ * Called when checkLimit() detects that the org's denormalized column
+ * doesn't match the plan config.
+ */
+function autoHealOrgLimit(orgId: string, column: string, value: number): void {
+  const supabase = createAdminClient();
+  supabase
+    .from("organizations")
+    .update({ [column]: value })
+    .eq("id", orgId)
+    .then(({ error }) => {
+      if (error) {
+        console.error(`[feature-gate] Auto-heal failed for org ${orgId}:`, error.message);
+      } else {
+        console.log(`[feature-gate] Auto-healed ${column}=${value} for org ${orgId}`);
+      }
+    });
 }
 
 // Re-export registries for introspection (useful for admin panels)

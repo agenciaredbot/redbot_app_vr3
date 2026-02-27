@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { registerSchema } from "@/lib/validators/auth";
 import { generateSlug } from "@/lib/utils/slug";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
+import { PLANS } from "@/config/plans";
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,13 +92,19 @@ export async function POST(request: NextRequest) {
       slug = `${slug}-${Math.random().toString(36).substring(2, 6)}`;
     }
 
-    // Create organization
+    // Create organization with explicit plan limits (prevents desync with DB defaults)
+    const defaultPlan = PLANS["basic"];
     const { data: org, error: orgError } = await supabase
       .from("organizations")
       .insert({
         name: organizationName,
         slug,
         email,
+        plan_tier: "basic",
+        plan_status: "trialing",
+        max_properties: defaultPlan.limits.maxProperties,
+        max_agents: defaultPlan.limits.maxAgents,
+        max_conversations_per_month: defaultPlan.limits.maxConversationsPerMonth,
       })
       .select()
       .single();
