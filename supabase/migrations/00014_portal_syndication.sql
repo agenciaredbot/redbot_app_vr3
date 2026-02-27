@@ -1,7 +1,7 @@
 -- ============================================================
 -- REDBOT.APP — Portal Syndication
 -- Publish properties to external real estate portals
--- (Trovit, Mitula, FincaRaíz, etc.)
+-- via Proppit (Properati, Trovit, Mitula, Nestoria, +3)
 -- ============================================================
 
 -- ============================================================
@@ -13,7 +13,7 @@ CREATE TABLE portal_connections (
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
 
   -- Portal identity
-  portal_slug TEXT NOT NULL,            -- 'trovit', 'mitula', 'fincaraiz'
+  portal_slug TEXT NOT NULL,            -- 'proppit' (futuro: otros portales)
 
   -- State
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -48,7 +48,7 @@ CREATE TABLE portal_listings (
   property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
   portal_connection_id UUID NOT NULL REFERENCES portal_connections(id) ON DELETE CASCADE,
 
-  -- Portal-assigned ID (for REST API portals)
+  -- Portal-assigned ID (para futuras integraciones REST API)
   external_id TEXT,
 
   -- Status
