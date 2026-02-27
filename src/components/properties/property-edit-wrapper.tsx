@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { PropertyForm } from "./property-form";
 import { ImageUpload } from "./image-upload";
+import { PropertyPortals } from "@/components/portals/property-portals";
 import { GlassCard } from "@/components/ui/glass-card";
 import { getI18nText } from "@/lib/utils/format";
 import type { Property } from "@/lib/supabase/types";
@@ -108,6 +109,7 @@ export function PropertyEditWrapper({ property, orgSlug }: PropertyEditWrapperPr
         images={images}
         onImagesChange={setImages}
       />
+      <PropertyPortals propertyId={property.id} />
     </div>
   );
 }

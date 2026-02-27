@@ -125,7 +125,8 @@ export type FeatureFlag =
   | "exportLeads"
   | "customDomain"
   | "fullCustomization"
-  | "whatsappChannel";
+  | "whatsappChannel"
+  | "portalSyndication";
 
 interface FeatureFlagDefinition {
   /** Key in PlanDefinition.limits to check */
@@ -167,6 +168,12 @@ const FEATURE_REGISTRY: Record<FeatureFlag, FeatureFlagDefinition> = {
     planKey: "whatsappChannel",
     enabledValue: true,
     label: "canal de WhatsApp",
+    requiredPlan: "power",
+  },
+  portalSyndication: {
+    planKey: "portalSyndication",
+    enabledValue: true,
+    label: "publicación en portales",
     requiredPlan: "power",
   },
 };

@@ -18,6 +18,7 @@ export interface PlanDefinition {
     exportLeads: boolean;
     customDomain: boolean;
     whatsappChannel: boolean;
+    portalSyndication: boolean;
   };
 }
 
@@ -37,6 +38,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       exportLeads: false,
       customDomain: false,
       whatsappChannel: false,
+      portalSyndication: false,
     },
   },
   power: {
@@ -54,6 +56,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       exportLeads: true,
       customDomain: false,
       whatsappChannel: true,
+      portalSyndication: true,
     },
   },
   omni: {
@@ -71,6 +74,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       exportLeads: true,
       customDomain: true,
       whatsappChannel: true,
+      portalSyndication: true,
     },
   },
 };

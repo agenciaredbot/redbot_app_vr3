@@ -93,6 +93,10 @@ export const TAG_CATEGORY_LABELS: Record<string, string> = {
   custom: "Personalizados",
 };
 
+export const PORTAL_OPTIONS: { value: string; label: string }[] = [
+  { value: "proppit", label: "Proppit (Properati, Trovit, Mitula, +4)" },
+];
+
 export const COLOMBIAN_CITIES = [
   "Bogotá",
   "Medellín",
