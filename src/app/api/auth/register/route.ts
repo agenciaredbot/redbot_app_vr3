@@ -119,6 +119,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Track affiliate referral (non-blocking — never fails registration)
+    const refCode = request.cookies.get("redbot_ref")?.value;
+    if (refCode) {
+      try {
+        const { data: affiliate } = await supabase
+          .from("affiliates")
+          .select("id")
+          .eq("referral_code", refCode)
+          .eq("status", "active")
+          .single();
+
+        if (affiliate) {
+          await supabase
+            .from("organizations")
+            .update({ referred_by_affiliate_id: affiliate.id })
+            .eq("id", org.id);
+
+          await supabase.from("affiliate_referrals").insert({
+            affiliate_id: affiliate.id,
+            referred_org_id: org.id,
+            referral_code_used: refCode,
+            status: "pending",
+          });
+
+          await supabase.rpc("increment_affiliate_referrals", {
+            aff_id: affiliate.id,
+          });
+
+          console.log(`[register] Referral tracked: code=${refCode}, org=${org.id}`);
+        }
+      } catch (err) {
+        console.error("[register] Affiliate referral tracking error:", err);
+      }
+    }
+
     return NextResponse.json({
       user: { id: signUpData.user.id, email },
       organization: { id: org.id, slug: org.slug, name: org.name },

@@ -9,6 +9,8 @@ export interface PlanDefinition {
   /** Price in USD cents (secondary — Stripe, future) */
   priceUSDCents: number;
   trialDays: number;
+  /** Default affiliate commission % (actual rates stored in DB, this is fallback) */
+  defaultCommissionPercent: number;
   limits: {
     maxProperties: number; // -1 = unlimited
     maxAgents: number; // -1 = unlimited
@@ -30,6 +32,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     priceCOPCents: 80_000_00, // $80,000 COP
     priceUSDCents: 20_00, // $20 USD
     trialDays: 15,
+    defaultCommissionPercent: 10,
     limits: {
       maxProperties: 50,
       maxAgents: 2,
@@ -49,6 +52,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     priceCOPCents: 199_000_00, // $199,000 COP
     priceUSDCents: 50_00, // $50 USD
     trialDays: 15,
+    defaultCommissionPercent: 15,
     limits: {
       maxProperties: 200,
       maxAgents: 5,
@@ -68,6 +72,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     priceCOPCents: 299_000_00, // $299,000 COP
     priceUSDCents: 75_00, // $75 USD
     trialDays: 15,
+    defaultCommissionPercent: 20,
     limits: {
       maxProperties: -1,
       maxAgents: -1,

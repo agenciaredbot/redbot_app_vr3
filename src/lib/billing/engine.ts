@@ -333,8 +333,8 @@ export async function handleSubscriptionPayment(
   const isPaid = payment.status === "approved";
   const isFailed = ["rejected", "cancelled", "refunded"].includes(payment.status);
 
-  // Create invoice
-  await supabase.from("invoices").insert({
+  // Create invoice (capture ID for affiliate commission tracking)
+  const { data: newInvoice } = await supabase.from("invoices").insert({
     organization_id: orgId,
     subscription_id: sub.id,
     provider: "mercadopago",
@@ -347,7 +347,7 @@ export async function handleSubscriptionPayment(
     paid_at: isPaid && payment.date_approved ? payment.date_approved : null,
     failure_reason: isFailed ? `MP status: ${payment.status} (${payment.status_detail})` : null,
     metadata: { mp_payment_id: payment.id, mp_status: payment.status },
-  });
+  }).select("id").single();
 
   // Update subscription based on payment result
   if (isPaid) {
@@ -364,6 +364,20 @@ export async function handleSubscriptionPayment(
 
     await syncLimits(orgId, sub.plan_tier);
     await updateOrgPlanStatus(orgId, sub.plan_tier, "active", "mercadopago");
+
+    // Calculate affiliate commission (non-blocking)
+    if (newInvoice?.id) {
+      try {
+        const { processAffiliateCommission } = await import("@/lib/affiliates/commission");
+        await processAffiliateCommission(orgId, sub.plan_tier, amountCents, {
+          invoiceId: newInvoice.id,
+          periodStart: now.toISOString(),
+          periodEnd: periodEnd.toISOString(),
+        });
+      } catch (err) {
+        console.error("[billing] Affiliate commission error:", err);
+      }
+    }
   } else if (isFailed) {
     // MP will auto-retry — we just update our status
     const newRetryCount = (sub.retry_count || 0) + 1;

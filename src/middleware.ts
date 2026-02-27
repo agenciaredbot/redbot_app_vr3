@@ -6,6 +6,21 @@ export async function middleware(request: NextRequest) {
     request: { headers: request.headers },
   });
 
+  // Track affiliate referral code via cookie (30-day expiry)
+  const refCode = request.nextUrl.searchParams.get("ref");
+  if (refCode && /^[A-Za-z0-9]{4,20}$/.test(refCode)) {
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
+    const isProduction = !rootDomain.includes("localhost");
+    response.cookies.set("redbot_ref", refCode, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      path: "/",
+      ...(isProduction && { domain: `.${rootDomain}` }),
+    });
+  }
+
   // Refresh Supabase auth token
   const supabase = createMiddlewareClient(request, response);
   const {
@@ -71,7 +86,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Route: Tenant pages — rewrite to /t/[slug] route group
-  if (subdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/super-admin") && !pathname.startsWith("/api") && !pathname.startsWith("/auth") && !pathname.startsWith("/login") && !pathname.startsWith("/register") && !pathname.startsWith("/join") && !pathname.startsWith("/verify-email") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
+  if (subdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/super-admin") && !pathname.startsWith("/api") && !pathname.startsWith("/auth") && !pathname.startsWith("/login") && !pathname.startsWith("/register") && !pathname.startsWith("/join") && !pathname.startsWith("/afiliados") && !pathname.startsWith("/verify-email") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
     const url = request.nextUrl.clone();
     url.pathname = `/t/${subdomain}${pathname}`;
     return NextResponse.rewrite(url, { headers: response.headers });

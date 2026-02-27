@@ -95,8 +95,17 @@ export interface OpportunityRequest {
   organization?: { name: string; slug: string };
 }
 
+// ── Affiliates ──
+
+export type AffiliateType = "external" | "tenant";
+export type AffiliateStatus = "pending" | "active" | "suspended" | "rejected";
+export type CommissionStatus = "pending" | "approved" | "paid" | "cancelled";
+export type PayoutStatus = "pending" | "processing" | "completed" | "failed";
+export type PayoutMethod = "nequi" | "bank_transfer" | "other";
+export type ReferralStatus = "pending" | "active" | "churned" | "cancelled";
+
 // Helper types
-export type UserRole = "super_admin" | "org_admin" | "org_agent";
+export type UserRole = "super_admin" | "org_admin" | "org_agent" | "affiliate";
 
 export type PipelineStage =
   | "nuevo"
