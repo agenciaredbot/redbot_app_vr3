@@ -54,6 +54,15 @@ export function SuperAdminAffiliatesClient() {
   const [rates, setRates] = useState<Rate[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const registrationLink = "https://redbot.app/afiliados";
+
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(registrationLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -146,6 +155,17 @@ export function SuperAdminAffiliatesClient() {
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Programa de Afiliados</h1>
         <p className="text-text-muted text-sm mt-1">Gestiona afiliados, comisiones y pagos</p>
+      </div>
+
+      {/* Registration link for sharing */}
+      <div className="backdrop-blur-xl bg-white/[0.03] border border-border-glass rounded-2xl p-4 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs text-text-muted mb-1">Link de registro para afiliados externos</p>
+          <p className="text-sm text-accent-blue font-mono truncate">{registrationLink}</p>
+        </div>
+        <GlassButton size="sm" onClick={copyLink}>
+          {linkCopied ? "¡Copiado!" : "Copiar"}
+        </GlassButton>
       </div>
 
       {/* Stats */}
