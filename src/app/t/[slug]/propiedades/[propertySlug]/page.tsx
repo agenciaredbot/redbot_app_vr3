@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name")
+    .select("id, name, favicon_url")
     .eq("slug", slug)
     .single();
 
@@ -36,9 +36,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = getI18nText(property.description) || `${title} en ${property.city || "Colombia"}`;
   const images = (property.images as string[]) || [];
 
+  const faviconUrl = org.favicon_url || "/redbot-favicon-96x96.png";
+
   return {
-    title: `${title} | ${org.name}`,
+    title,
     description,
+    icons: {
+      icon: faviconUrl,
+      apple: faviconUrl,
+    },
     openGraph: {
       title,
       description,
