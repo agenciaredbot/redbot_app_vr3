@@ -5,12 +5,23 @@ import { agentTools } from "@/lib/anthropic/tools";
 import { handleToolCall } from "@/lib/anthropic/tool-handlers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkLimit, incrementConversationCountDirect } from "@/lib/plans/feature-gate";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 import type Anthropic from "@anthropic-ai/sdk";
 
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 30 requests/min per IP
+    const ip = getClientIp(request);
+    const rateCheck = checkRateLimit(ip, RATE_LIMITS.chat);
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Demasiadas solicitudes. Intenta de nuevo en un momento." }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const body = await request.json();
     const { messages, organizationSlug, conversationId, propertyContext } = body;
 

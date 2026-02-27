@@ -2,7 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
+// SVG removed — XSS risk via embedded scripts
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+// Magic bytes for validating actual file content matches declared type
+const IMAGE_MAGIC_BYTES: Record<string, number[][]> = {
+  "image/jpeg": [[0xFF, 0xD8, 0xFF]],
+  "image/png": [[0x89, 0x50, 0x4E, 0x47]],
+  "image/webp": [[0x52, 0x49, 0x46, 0x46]], // "RIFF"
+};
+
+async function validateImageMagicBytes(file: File): Promise<boolean> {
+  const buffer = await file.slice(0, 8).arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const signatures = IMAGE_MAGIC_BYTES[file.type];
+  if (!signatures) return false;
+  return signatures.some((sig) => sig.every((b, i) => bytes[i] === b));
+}
 
 const DB_FIELD_MAP: Record<string, string> = {
   logo: "logo_url",
@@ -38,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json(
-      { error: "Tipo de archivo no soportado. Usa JPG, PNG, WebP o SVG" },
+      { error: "Tipo de archivo no soportado. Usa JPG, PNG o WebP" },
       { status: 400 }
     );
   }
@@ -46,6 +62,15 @@ export async function POST(request: NextRequest) {
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json(
       { error: "El archivo no debe superar 2MB" },
+      { status: 400 }
+    );
+  }
+
+  // Validate magic bytes match declared MIME type
+  const validMagic = await validateImageMagicBytes(file);
+  if (!validMagic) {
+    return NextResponse.json(
+      { error: "El contenido del archivo no coincide con el tipo declarado" },
       { status: 400 }
     );
   }
@@ -61,8 +86,9 @@ export async function POST(request: NextRequest) {
   const oldUrl = (org as Record<string, unknown> | null)?.[dbField] as string | null;
 
   // Upload new file
-  const ext = file.name.split(".").pop() || "webp";
-  const fileName = `${organizationId}/branding/${imageType}-${Date.now()}.${ext}`;
+  const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "webp";
+  const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "webp";
+  const fileName = `${organizationId}/branding/${imageType}-${crypto.randomUUID()}.${safeExt}`;
 
   const { error: uploadError } = await supabase.storage
     .from("properties")
@@ -72,8 +98,9 @@ export async function POST(request: NextRequest) {
     });
 
   if (uploadError) {
+    console.error("[logo-upload] Upload error:", uploadError.message);
     return NextResponse.json(
-      { error: `Error subiendo archivo: ${uploadError.message}` },
+      { error: "Error subiendo archivo" },
       { status: 500 }
     );
   }
@@ -92,10 +119,11 @@ export async function POST(request: NextRequest) {
     .eq("id", organizationId);
 
   if (updateError) {
+    console.error("[logo-upload] DB update error:", updateError.message);
     // Rollback: delete uploaded file
     await supabase.storage.from("properties").remove([fileName]);
     return NextResponse.json(
-      { error: updateError.message },
+      { error: "Error actualizando la organización" },
       { status: 500 }
     );
   }
@@ -154,8 +182,9 @@ export async function DELETE(request: NextRequest) {
     .eq("id", organizationId);
 
   if (updateError) {
+    console.error("[logo-delete] DB update error:", updateError.message);
     return NextResponse.json(
-      { error: updateError.message },
+      { error: "Error actualizando la organización" },
       { status: 500 }
     );
   }

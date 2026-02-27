@@ -116,41 +116,9 @@ export async function GET(request: NextRequest) {
     return redirectResponse;
   }
 
-  // Strategy 4 (last resort): Use admin client to confirm email manually
-  // so user can at least log in normally (breaks the unconfirmed email loop)
-  if (code && type === "signup") {
-    console.log("[auth/callback] Strategy 4: admin email confirmation fallback");
-    try {
-      const adminClient = createAdminClient();
-
-      if (email) {
-        // We have the email — find user and confirm
-        const { data: { users } } = await adminClient.auth.admin.listUsers();
-        const targetUser = users?.find(u => u.email === email);
-        if (targetUser && !targetUser.email_confirmed_at) {
-          console.log("[auth/callback] Admin: confirming email for user:", targetUser.id);
-          const { error: updateError } = await adminClient.auth.admin.updateUserById(
-            targetUser.id,
-            { email_confirm: true }
-          );
-          if (!updateError) {
-            console.log("[auth/callback] Admin: email confirmed! Redirecting to login.");
-            const successUrl = new URL("/login", origin);
-            successUrl.searchParams.set("message", "email_confirmed");
-            return NextResponse.redirect(successUrl.toString());
-          } else {
-            console.error("[auth/callback] Admin: updateUser failed:", updateError.message);
-          }
-        } else {
-          console.log("[auth/callback] Admin: user not found or already confirmed");
-        }
-      } else {
-        console.error("[auth/callback] Admin fallback: no email param, cannot identify user");
-      }
-    } catch (e) {
-      console.error("[auth/callback] Admin fallback error:", e);
-    }
-  }
+  // Strategy 4 REMOVED: Previously used admin client to confirm emails
+  // without proper OTP validation — security vulnerability.
+  // Users whose verification link fails should re-request confirmation.
 
   // All strategies failed
   console.error("[auth/callback] ALL STRATEGIES FAILED");

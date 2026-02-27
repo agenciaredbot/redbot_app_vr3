@@ -3,9 +3,20 @@ import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { registerSchema } from "@/lib/validators/auth";
 import { generateSlug } from "@/lib/utils/slug";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 attempts per hour per IP
+    const ip = getClientIp(request);
+    const rateCheck = checkRateLimit(ip, RATE_LIMITS.authRegister);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "Demasiados intentos de registro. Intenta de nuevo más tarde." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const parsed = registerSchema.safeParse(body);
 

@@ -8,6 +8,7 @@ import {
   persistMessages,
 } from "@/lib/whatsapp/conversation-manager";
 import { checkLimit, incrementConversationCountDirect } from "@/lib/plans/feature-gate";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 import type {
   WebhookMessagePayload,
   WebhookConnectionPayload,
@@ -29,6 +30,13 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    // Rate limit: 200 requests per minute per IP
+    const ip = getClientIp(request);
+    const rateCheck = checkRateLimit(ip, RATE_LIMITS.webhook);
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    }
+
     // Verify webhook secret
     const headerSecret = request.headers.get("x-webhook-secret");
     if (!verifyWebhookSecret(headerSecret)) {

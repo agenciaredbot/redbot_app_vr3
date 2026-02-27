@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { affiliateRegisterSchema } from "@/lib/validators/affiliate";
 import { generateReferralCode } from "@/lib/affiliates/referral-code";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * POST /api/affiliates/register
@@ -11,6 +12,16 @@ import { generateReferralCode } from "@/lib/affiliates/referral-code";
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 attempts per hour per IP
+    const ip = getClientIp(request);
+    const rateCheck = checkRateLimit(ip, RATE_LIMITS.affiliateRegister);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "Demasiados intentos de registro. Intenta de nuevo más tarde." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const parsed = affiliateRegisterSchema.safeParse(body);
 

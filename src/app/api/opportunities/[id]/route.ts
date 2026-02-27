@@ -100,7 +100,7 @@ export async function PATCH(
 
   if (updateError) {
     console.error("[opportunities/[id]] PATCH error:", updateError);
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   // Create notification for the other party

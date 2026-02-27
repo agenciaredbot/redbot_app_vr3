@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error("[opportunities/search] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   // Check which properties already have pending/approved share requests from this org

@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error("[opportunities/requests] GET error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   const requests = (data || []).map((r: any) => ({
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error("[opportunities/requests] POST error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({ request: data }, { status: 201 });

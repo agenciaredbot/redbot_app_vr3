@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
   if (reqError) {
     console.error("[cron/match-opportunities] Error fetching requests:", reqError);
-    return NextResponse.json({ error: reqError.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   if (!requests || requests.length === 0) {

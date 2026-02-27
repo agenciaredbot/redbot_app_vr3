@@ -338,8 +338,9 @@ export function verifyWebhookSecret(
   headerSecret: string | null
 ): boolean {
   if (!WEBHOOK_SECRET) {
-    // No secret configured — accept all (rely on URL obscurity)
-    return true;
+    // No secret configured — REJECT all to prevent unauthorized access
+    console.error("[wa-webhook] EVOLUTION_WEBHOOK_SECRET not configured — rejecting request");
+    return false;
   }
   return headerSecret === WEBHOOK_SECRET;
 }

@@ -20,7 +20,7 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({ paymentMethods: methods || [] });
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 });
+      return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
     }
 
     return NextResponse.json({ paymentMethod: pm });
@@ -152,7 +152,7 @@ export async function DELETE(request: NextRequest) {
     .eq("organization_id", organizationId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

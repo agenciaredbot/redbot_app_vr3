@@ -49,7 +49,7 @@ export async function POST(
     if (error.code === "23505") {
       return NextResponse.json({ ok: true });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
@@ -89,7 +89,7 @@ export async function DELETE(
     .eq("tag_id", tag_id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

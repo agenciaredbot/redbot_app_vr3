@@ -46,7 +46,7 @@ export async function DELETE(request: NextRequest) {
 
   if (updateError) {
     return NextResponse.json(
-      { error: updateError.message },
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
   }

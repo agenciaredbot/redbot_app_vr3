@@ -40,7 +40,7 @@ export async function GET(_request: NextRequest) {
 
   if (err1 || err2) {
     console.error("[opportunities/partners] GET error:", err1 || err2);
-    return NextResponse.json({ error: (err1 || err2)!.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error("[opportunities/partners] POST error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({ partner: data }, { status: 201 });
@@ -149,7 +149,7 @@ export async function DELETE(request: NextRequest) {
 
   if (error) {
     console.error("[opportunities/partners] DELETE error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

@@ -35,7 +35,7 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (invError) {
-    return NextResponse.json({ error: invError.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   // Fetch org limits

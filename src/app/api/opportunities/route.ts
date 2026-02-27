@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error("[opportunities] GET error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
 
   if (insertError) {
     console.error("[opportunities] POST error:", insertError);
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   // Create notification for the property owner org

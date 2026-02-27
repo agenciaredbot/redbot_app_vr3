@@ -58,7 +58,7 @@ export async function PUT(
 
   if (updateError) {
     return NextResponse.json(
-      { error: updateError.message },
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
   }
@@ -113,7 +113,7 @@ export async function DELETE(
 
   if (updateError) {
     return NextResponse.json(
-      { error: updateError.message },
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
   }

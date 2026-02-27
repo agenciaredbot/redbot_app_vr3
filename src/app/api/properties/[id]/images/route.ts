@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 
+// Allowed image types and their magic bytes (first bytes of file)
+const IMAGE_MAGIC_BYTES: Record<string, number[][]> = {
+  "image/jpeg": [[0xFF, 0xD8, 0xFF]],
+  "image/png": [[0x89, 0x50, 0x4E, 0x47]],
+  "image/webp": [[0x52, 0x49, 0x46, 0x46]], // "RIFF"
+  "image/gif": [[0x47, 0x49, 0x46]], // "GIF"
+};
+
+async function validateImageMagicBytes(file: File): Promise<boolean> {
+  const buffer = await file.slice(0, 8).arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const signatures = IMAGE_MAGIC_BYTES[file.type];
+  if (!signatures) return false;
+  return signatures.some((sig) => sig.every((b, i) => bytes[i] === b));
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -45,9 +61,9 @@ export async function POST(
     const errors: string[] = [];
 
     for (const file of files) {
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        errors.push(`${file.name}: No es una imagen válida`);
+      // Validate file type — reject SVGs (XSS risk) and non-images
+      if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+        errors.push(`${file.name}: Tipo de archivo no permitido`);
         continue;
       }
 
@@ -57,8 +73,16 @@ export async function POST(
         continue;
       }
 
-      const ext = file.name.split(".").pop() || "jpg";
-      const fileName = `${organizationId}/${id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      // Validate magic bytes match declared MIME type
+      const validMagic = await validateImageMagicBytes(file);
+      if (!validMagic) {
+        errors.push(`${file.name}: El contenido no coincide con el tipo de archivo`);
+        continue;
+      }
+
+      const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const safeExt = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext) ? ext : "jpg";
+      const fileName = `${organizationId}/${id}/${crypto.randomUUID()}.${safeExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("properties")
@@ -148,7 +172,7 @@ export async function PUT(
     .eq("organization_id", organizationId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 
   return NextResponse.json({ images });
