@@ -170,6 +170,7 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
   };
 
   const handleActivateDemo = (tier: PlanTier, days: number) => {
+    const config = PLANS[tier];
     const trialEnd = new Date();
     trialEnd.setDate(trialEnd.getDate() + days);
     quickAction(
@@ -178,18 +179,25 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
         plan_status: "trialing",
         is_active: true,
         trial_ends_at: trialEnd.toISOString(),
+        max_properties: config.limits.maxProperties,
+        max_agents: config.limits.maxAgents,
+        max_conversations_per_month: config.limits.maxConversationsPerMonth,
       },
       `Demo ${PLANS[tier].name} activado por ${days} días`
     );
   };
 
   const handleFreeUpgrade = (tier: PlanTier) => {
+    const config = PLANS[tier];
     quickAction(
       {
         plan_tier: tier,
         plan_status: "active",
         is_active: true,
         trial_ends_at: null,
+        max_properties: config.limits.maxProperties,
+        max_agents: config.limits.maxAgents,
+        max_conversations_per_month: config.limits.maxConversationsPerMonth,
       },
       `Plan ${PLANS[tier].name} activado gratis (sin expiración)`
     );
@@ -394,25 +402,36 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
                   <input
                     type="number"
                     value={maxProperties}
-                    onChange={(e) => setMaxProperties(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value);
+                      setMaxProperties(isNaN(v) ? 0 : v);
+                    }}
                     className="w-full px-4 py-2.5 rounded-xl bg-white/[0.05] border border-border-glass text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
                   />
+                  <p className="text-[11px] text-text-muted mt-1">-1 = ilimitado</p>
                 </div>
                 <div>
                   <label className="block text-sm text-text-secondary mb-1">Max agentes</label>
                   <input
                     type="number"
                     value={maxAgents}
-                    onChange={(e) => setMaxAgents(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value);
+                      setMaxAgents(isNaN(v) ? 0 : v);
+                    }}
                     className="w-full px-4 py-2.5 rounded-xl bg-white/[0.05] border border-border-glass text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
                   />
+                  <p className="text-[11px] text-text-muted mt-1">-1 = ilimitado</p>
                 </div>
                 <div>
                   <label className="block text-sm text-text-secondary mb-1">Max conversaciones/mes</label>
                   <input
                     type="number"
                     value={maxConversations}
-                    onChange={(e) => setMaxConversations(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value);
+                      setMaxConversations(isNaN(v) ? 0 : v);
+                    }}
                     className="w-full px-4 py-2.5 rounded-xl bg-white/[0.05] border border-border-glass text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
                   />
                 </div>
