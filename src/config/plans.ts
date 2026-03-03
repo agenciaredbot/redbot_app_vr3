@@ -27,10 +27,10 @@ export interface PlanDefinition {
 
 export const PLANS: Record<PlanTier, PlanDefinition> = {
   basic: {
-    name: "Basic",
+    name: "Starter",
     tier: "basic",
-    priceCOPCents: 80_000_00, // $80,000 COP
-    priceUSDCents: 20_00, // $20 USD
+    priceCOPCents: 89_900_00, // $89,900 COP
+    priceUSDCents: 22_00, // $22 USD
     trialDays: 15,
     defaultCommissionPercent: 10,
     limits: {
@@ -69,8 +69,8 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
   omni: {
     name: "Omni",
     tier: "omni",
-    priceCOPCents: 299_000_00, // $299,000 COP
-    priceUSDCents: 75_00, // $75 USD
+    priceCOPCents: 399_000_00, // $399,000 COP
+    priceUSDCents: 100_00, // $100 USD
     trialDays: 15,
     defaultCommissionPercent: 20,
     limits: {

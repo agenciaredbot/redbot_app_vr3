@@ -271,6 +271,36 @@ const icons = {
       />
     </svg>
   ),
+  whatsapp: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+    </svg>
+  ),
+  bell: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+    </svg>
+  ),
+  download: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+  ),
+  handshake: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+    </svg>
+  ),
+  link: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+    </svg>
+  ),
+  userCheck: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+    </svg>
+  ),
 };
 
 /* ─── Main Page ─── */
@@ -426,6 +456,18 @@ export default function LandingMarketingPage() {
                 </span>
               </div>
             </div>
+
+            {/* Floating badge: WhatsApp Integrado — top left */}
+            <div className="absolute top-20 -left-4 md:top-24 md:-left-16 animate-float-badge-2">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-green/10 backdrop-blur-xl border border-accent-green/20 shadow-lg shadow-accent-green/5">
+                <svg className="w-4 h-4 text-accent-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                </svg>
+                <span className="text-sm text-text-primary">
+                  WhatsApp Integrado
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Stats row */}
@@ -512,11 +554,16 @@ export default function LandingMarketingPage() {
               />
               <PainPoint
                 number="03"
+                title="Estás atrapado en un solo canal"
+                description="Tus clientes están en WhatsApp pero tú solo puedes atenderlos en tu web. Cada canal desconectado es un lead perdido."
+              />
+              <PainPoint
+                number="04"
                 title="Pierdes compradores reales"
                 description="Sin claridad en calificación, tu equipo persigue especuladores mientras compradores reales se van con la competencia."
               />
               <PainPoint
-                number="04"
+                number="05"
                 title="Información dispersa y sin control"
                 description="Los datos de clientes, propiedades y conversaciones están en WhatsApp, Excel y correos. No hay una fuente de verdad."
               />
@@ -547,6 +594,12 @@ export default function LandingMarketingPage() {
                   <span className="w-2 h-2 rounded-full bg-accent-orange" />
                   <span className="text-sm text-text-secondary">
                     $500 USD en comisiones a portales este mes
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-accent-red/5 border border-accent-red/10">
+                  <span className="w-2 h-2 rounded-full bg-accent-red animate-pulse" />
+                  <span className="text-sm text-text-secondary">
+                    47 mensajes de WhatsApp sin responder
                   </span>
                 </div>
               </div>
@@ -583,26 +636,26 @@ export default function LandingMarketingPage() {
             {[
               {
                 num: "01",
-                title: "Atiende automáticamente",
-                desc: "Tu agente IA responde preguntas, muestra propiedades y captura datos 24/7.",
+                title: "Captura en todos los canales",
+                desc: "Tu agente IA atiende en tu portal web y WhatsApp simultáneamente. Cada conversación genera un lead automáticamente.",
                 accent: "text-accent-blue",
               },
               {
                 num: "02",
                 title: "Conecta tu catálogo",
-                desc: "Importa tu base de datos de propiedades en minutos desde Excel o crea manualmente.",
+                desc: "Importa propiedades desde Excel o crea manualmente. Comparte enlaces directos a cada propiedad con tus clientes.",
                 accent: "text-accent-purple",
               },
               {
                 num: "03",
                 title: "Gestiona tu pipeline",
-                desc: "CRM visual con etapas de venta, calificación automática y seguimiento de leads.",
+                desc: "CRM visual con Kanban, calificación automática, etiquetado inteligente y seguimiento de leads por todos los canales.",
                 accent: "text-accent-cyan",
               },
               {
                 num: "04",
-                title: "Optimiza tu equipo",
-                desc: "Roles, permisos y métricas para que tu equipo se enfoque en cerrar ventas.",
+                title: "Crece con tu red",
+                desc: "Red de oportunidades entre inmobiliarias, socios de confianza y programa de afiliados para crecer juntos.",
                 accent: "text-accent-green",
               },
             ].map((item) => (
@@ -645,6 +698,7 @@ export default function LandingMarketingPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Captación */}
             <FeatureCard
               icon={icons.ai}
               title="Agente de IA 24/7"
@@ -652,22 +706,30 @@ export default function LandingMarketingPage() {
               accent="bg-accent-blue/10 text-accent-blue"
             />
             <FeatureCard
-              icon={icons.building}
-              title="Catálogo de propiedades"
-              description="12 tipos de propiedad, fotos, precios en COP/USD, estratos, áreas, ubicaciones y más. Crea manualmente o importa desde Excel."
-              accent="bg-accent-purple/10 text-accent-purple"
+              icon={icons.whatsapp}
+              title="Canal WhatsApp"
+              description="Conecta tu WhatsApp Business. Tu agente IA atiende, responde y captura leads 24/7 por WhatsApp. Escanea un QR y listo."
+              accent="bg-accent-green/10 text-accent-green"
             />
             <FeatureCard
-              icon={icons.upload}
-              title="Importación masiva inteligente"
-              description="Sube tu Excel y nuestro sistema mapea columnas automáticamente. Soporta formatos colombianos de precios y detecta duplicados."
-              accent="bg-accent-cyan/10 text-accent-cyan"
+              icon={icons.globe}
+              title="Tu portal web con subdominio"
+              description="Tu propia página web pública con catálogo de propiedades, chat IA integrado y enlaces compartibles para cada propiedad."
+              accent="bg-accent-blue/10 text-accent-blue"
             />
+            <FeatureCard
+              icon={icons.bell}
+              title="Notificaciones por email"
+              description="Alertas automáticas cuando llega un nuevo lead, alguien solicita una propiedad de la red, o hay una acción pendiente."
+              accent="bg-accent-orange/10 text-accent-orange"
+            />
+
+            {/* Gestión */}
             <FeatureCard
               icon={icons.users}
               title="CRM con pipeline visual"
               description="Tablero Kanban con 8 etapas de venta. Arrastra y suelta leads por el pipeline. Calificación automática por temperatura."
-              accent="bg-accent-green/10 text-accent-green"
+              accent="bg-accent-purple/10 text-accent-purple"
             />
             <FeatureCard
               icon={icons.tag}
@@ -676,22 +738,56 @@ export default function LandingMarketingPage() {
               accent="bg-accent-orange/10 text-accent-orange"
             />
             <FeatureCard
-              icon={icons.globe}
-              title="Tu portal web con subdominio"
-              description="Cada inmobiliaria recibe su propia página web pública con catálogo de propiedades y chat IA integrado. Sin código."
-              accent="bg-accent-blue/10 text-accent-blue"
-            />
-            <FeatureCard
               icon={icons.chart}
               title="Gestión de equipo"
               description="Roles de administrador y agente, invitaciones por email, control de permisos y seguimiento de actividad del equipo."
               accent="bg-accent-purple/10 text-accent-purple"
             />
             <FeatureCard
+              icon={icons.download}
+              title="Exportación de leads"
+              description="Descarga tus leads en CSV para análisis externo, reportes o integración con otras herramientas de tu inmobiliaria."
+              accent="bg-accent-cyan/10 text-accent-cyan"
+            />
+
+            {/* Distribución */}
+            <FeatureCard
+              icon={icons.building}
+              title="Catálogo de propiedades"
+              description="12 tipos de propiedad, fotos, precios en COP/USD, estratos, áreas, ubicaciones y más. Crea manualmente o importa desde Excel."
+              accent="bg-accent-blue/10 text-accent-blue"
+            />
+            <FeatureCard
+              icon={icons.upload}
+              title="Importación masiva inteligente"
+              description="Sube tu Excel y nuestro sistema mapea columnas automáticamente. Soporta formatos colombianos de precios y detecta duplicados."
+              accent="bg-accent-cyan/10 text-accent-cyan"
+            />
+            <FeatureCard
+              icon={icons.handshake}
+              title="Red de oportunidades"
+              description="Busca propiedades de otras inmobiliarias, solicita compartir y cierra negocios con comisiones acordadas entre agencias."
+              accent="bg-accent-green/10 text-accent-green"
+            />
+
+            {/* Personalización */}
+            <FeatureCard
               icon={icons.shield}
               title="Marca personalizada"
               description="Logo, colores, favicon y nombre personalizado para tu agente IA. Tu identidad visual en cada interacción con tus clientes."
               accent="bg-accent-cyan/10 text-accent-cyan"
+            />
+            <FeatureCard
+              icon={icons.userCheck}
+              title="Socios de confianza"
+              description="Establece relaciones con otras agencias. Auto-aprueba solicitudes de compartir propiedades y define comisiones por defecto."
+              accent="bg-accent-green/10 text-accent-green"
+            />
+            <FeatureCard
+              icon={icons.link}
+              title="Dominio personalizado"
+              description="Usa tu propio dominio en lugar del subdominio de Redbot. Tu marca, tu URL. Disponible en plan Omni."
+              accent="bg-accent-purple/10 text-accent-purple"
             />
             <FeatureCard
               icon={icons.play}
@@ -709,11 +805,11 @@ export default function LandingMarketingPage() {
           <div className="text-center mb-14">
             <SectionBadge text="Cómo funciona" />
             <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
-              Activa tu agente en 3 pasos
+              Activa tu agente en 4 pasos
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
                 step: "1",
@@ -733,11 +829,19 @@ export default function LandingMarketingPage() {
               },
               {
                 step: "3",
+                title: "Conecta tu WhatsApp",
+                desc: "Escanea un código QR y tu agente IA empieza a responder automáticamente por WhatsApp. Sin configuración técnica.",
+                accent:
+                  "from-accent-cyan to-accent-cyan/50 border-accent-cyan/20",
+                img: "/marketing/assets/improve-your-service.png",
+              },
+              {
+                step: "4",
                 title: "Tu agente empieza a vender",
-                desc: "El agente IA atiende visitantes en tu portal web, responde preguntas inteligentes y captura leads al instante.",
+                desc: "El agente IA atiende en tu portal web y WhatsApp, responde preguntas, captura leads y los organiza en tu CRM.",
                 accent:
                   "from-accent-green to-accent-green/50 border-accent-green/20",
-                img: "/marketing/assets/improve-your-service.png",
+                img: "/marketing/assets/ai-on-your-business.png",
               },
             ].map((item) => (
               <div
@@ -788,8 +892,8 @@ export default function LandingMarketingPage() {
             {[
               {
                 img: "/marketing/assets/growth-and-money.png",
-                title: "Más conversiones",
-                desc: "Incrementa la conversión de leads hasta un 35% con atención inmediata 24/7.",
+                title: "Más conversiones, más canales",
+                desc: "Incrementa tu conversión atendiendo en web y WhatsApp simultáneamente. Nunca pierdas un lead por no estar disponible.",
               },
               {
                 img: "/marketing/assets/goal.png",
@@ -798,8 +902,8 @@ export default function LandingMarketingPage() {
               },
               {
                 img: "/marketing/assets/ai-on-your-business.png",
-                title: "Respuesta instantánea",
-                desc: "Nunca pierdas un lead por demora. Tu agente responde en segundos, siempre.",
+                title: "Red de inmobiliarias",
+                desc: "Conecta con otras agencias, comparte propiedades y cierra negocios juntos con comisiones acordadas.",
               },
               {
                 img: "/marketing/assets/happy-customer.png",
@@ -852,11 +956,11 @@ export default function LandingMarketingPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Basic */}
+            {/* Starter */}
             <div className="bg-bg-glass backdrop-blur-xl border border-border-glass rounded-3xl p-7 flex flex-col">
               <div>
                 <h3 className="text-lg font-semibold text-text-primary">
-                  Basic
+                  Starter
                 </h3>
                 <p className="text-sm text-text-muted mt-1">
                   Para empezar a automatizar
@@ -864,9 +968,10 @@ export default function LandingMarketingPage() {
               </div>
               <div className="mt-6">
                 <span className="text-4xl font-bold text-text-primary">
-                  $80
+                  $89.900
                 </span>
-                <span className="text-text-muted text-sm"> USD/mes</span>
+                <span className="text-text-muted text-sm"> COP/mes</span>
+                <p className="text-xs text-text-muted mt-1">(~$22 USD)</p>
               </div>
               <ul className="mt-6 space-y-3 flex-1">
                 <CheckItem text="Hasta 50 propiedades" />
@@ -875,6 +980,8 @@ export default function LandingMarketingPage() {
                 <CheckItem text="Agente IA básico" />
                 <CheckItem text="Portal web con subdominio" />
                 <CheckItem text="CRM con pipeline visual" />
+                <CheckItem text="Enlaces compartibles" />
+                <CheckItem text="Notificaciones por email" />
               </ul>
               <Link
                 href="/register"
@@ -901,18 +1008,22 @@ export default function LandingMarketingPage() {
               </div>
               <div className="mt-6">
                 <span className="text-4xl font-bold text-text-primary">
-                  $199
+                  $199.000
                 </span>
-                <span className="text-text-muted text-sm"> USD/mes</span>
+                <span className="text-text-muted text-sm"> COP/mes</span>
+                <p className="text-xs text-text-muted mt-1">(~$50 USD)</p>
               </div>
               <ul className="mt-6 space-y-3 flex-1">
                 <CheckItem text="Hasta 200 propiedades" />
                 <CheckItem text="5 miembros del equipo" />
                 <CheckItem text="500 conversaciones/mes" />
                 <CheckItem text="Agente IA personalizado" />
+                <CheckItem text="Todo lo de Starter +" />
+                <CheckItem text="Canal WhatsApp 24/7" />
+                <CheckItem text="Red de oportunidades" />
                 <CheckItem text="Tags personalizados" />
                 <CheckItem text="Exportación de leads" />
-                <CheckItem text="Tutoriales premium" />
+                <CheckItem text="Socios de confianza" />
               </ul>
               <Link
                 href="/register"
@@ -934,15 +1045,15 @@ export default function LandingMarketingPage() {
               </div>
               <div className="mt-6">
                 <span className="text-4xl font-bold text-text-primary">
-                  $299
+                  $399.000
                 </span>
-                <span className="text-text-muted text-sm"> USD/mes</span>
+                <span className="text-text-muted text-sm"> COP/mes</span>
+                <p className="text-xs text-text-muted mt-1">(~$100 USD)</p>
               </div>
               <ul className="mt-6 space-y-3 flex-1">
                 <CheckItem text="Propiedades ilimitadas" />
                 <CheckItem text="Equipo ilimitado" />
                 <CheckItem text="2,000 conversaciones/mes" />
-                <CheckItem text="Agente IA personalizado" />
                 <CheckItem text="Todo lo de Power +" />
                 <CheckItem text="Dominio personalizado" />
                 <CheckItem text="Soporte prioritario" />
@@ -982,6 +1093,9 @@ export default function LandingMarketingPage() {
                   "12 tipos de propiedad del mercado local",
                   "Interfaz completamente en español",
                   "IA entrenada en ventas inmobiliarias colombianas",
+                  "Pagos con Mercado Pago en pesos colombianos",
+                  "WhatsApp integrado — el canal preferido de los colombianos",
+                  "Red de oportunidades entre inmobiliarias colombianas",
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-3">
                     <span className="w-2 h-2 rounded-full bg-accent-green flex-shrink-0" />
@@ -1030,6 +1144,18 @@ export default function LandingMarketingPage() {
                 q: "¿Qué pasa con mis datos si cancelo?",
                 a: "Tus datos son tuyos. Al cancelar puedes exportar toda tu información de leads y propiedades. No bloqueamos ni eliminamos nada.",
               },
+              {
+                q: "¿Cómo funciona la integración con WhatsApp?",
+                a: "Conectas tu número de WhatsApp escaneando un código QR desde tu panel de administración. Una vez conectado, tu agente IA responde automáticamente a los mensajes. Cada conversación crea un lead en tu CRM. Disponible en plan Power o superior.",
+              },
+              {
+                q: "¿Qué es la red de oportunidades?",
+                a: "Es un mercado interno donde las inmobiliarias pueden buscar propiedades de otras agencias, solicitar compartirlas con sus clientes y cerrar negocios con comisiones acordadas. Puedes establecer socios de confianza para agilizar el proceso.",
+              },
+              {
+                q: "¿Cómo funciona el programa de afiliados?",
+                a: "Puedes ganar comisiones recurrentes refiriendo nuevas inmobiliarias a Redbot. Recibes un link de referido único y ganas un porcentaje de cada pago mensual de tus referidos mientras estén activos.",
+              },
             ].map((faq) => (
               <details
                 key={faq.q}
@@ -1071,8 +1197,8 @@ export default function LandingMarketingPage() {
             </span>
           </h2>
           <p className="mt-6 text-lg text-text-secondary max-w-xl mx-auto">
-            Únete a las inmobiliarias colombianas que ya están usando IA para
-            vender más, gastar menos y atender mejor a sus clientes.
+            Atiende en WhatsApp y tu portal web 24/7, gestiona leads con IA
+            y conecta con una red de inmobiliarias. Todo desde un solo lugar.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -1136,6 +1262,12 @@ export default function LandingMarketingPage() {
                 className="hover:text-text-primary transition-colors"
               >
                 Crear cuenta
+              </Link>
+              <Link
+                href="/register"
+                className="hover:text-text-primary transition-colors"
+              >
+                Programa de afiliados
               </Link>
             </div>
           </div>
