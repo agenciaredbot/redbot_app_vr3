@@ -8,7 +8,7 @@ import { PlanSelector } from "./plan-selector";
 import { InvoiceList } from "./invoice-list";
 import { PLANS } from "@/config/plans";
 import type { PlanTier } from "@/lib/supabase/types";
-import type { BillingCurrency } from "@/lib/billing/types";
+import type { BillingCurrency, BillingPeriod } from "@/lib/billing/types";
 
 interface BillingStatus {
   plan: {
@@ -27,6 +27,8 @@ interface BillingStatus {
     currency: BillingCurrency;
     formattedPrice: string;
     trialEndsAt: string | null;
+    billingPeriod: BillingPeriod;
+    billingPeriodLabel: string;
   } | null;
   hasPaymentMethod: boolean;
   provider: string;
@@ -49,6 +51,7 @@ export function BillingPageClient() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [showPlans, setShowPlans] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   // Shown when user returns from MP checkout — waiting for webhook
@@ -79,12 +82,13 @@ export function BillingPageClient() {
     }
   }, []);
 
-  // Handle return from Mercado Pago checkout
+  // Handle return from Mercado Pago checkout (monthly or annual)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const preapprovalId = params.get("preapproval_id");
+    const annualPayment = params.get("annual_payment");
 
-    if (preapprovalId) {
+    if (preapprovalId || annualPayment) {
       // Clean URL params
       window.history.replaceState({}, "", window.location.pathname);
       setPaymentPending(true);
@@ -185,6 +189,7 @@ export function BillingPageClient() {
           body: JSON.stringify({
             planTier: tier,
             payerEmail: userEmail || "billing@redbot.app",
+            billingPeriod,
           }),
         });
 
@@ -277,6 +282,7 @@ export function BillingPageClient() {
   const currency: BillingCurrency = (sub?.currency as BillingCurrency) || "COP";
   const isTrialing = plan?.status === "trialing";
   const isActive = plan?.status === "active";
+  const isAnnualSub = sub?.billingPeriod === "annual";
 
   return (
     <div className="space-y-6">
@@ -342,9 +348,16 @@ export function BillingPageClient() {
       {/* Current Plan */}
       <GlassCard padding="lg">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-text-primary">
-            Plan actual
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-text-primary">
+              Plan actual
+            </h2>
+            {isAnnualSub && (
+              <span className="text-xs font-medium text-accent-blue bg-accent-blue/10 px-2 py-0.5 rounded-full">
+                Anual
+              </span>
+            )}
+          </div>
           {plan && (
             <SubscriptionStatusBadge
               status={plan.status}
@@ -360,7 +373,8 @@ export function BillingPageClient() {
             </span>
             {sub && (
               <span className="text-text-muted text-sm">
-                {sub.formattedPrice}/mes
+                {sub.formattedPrice}
+                {isAnnualSub ? "/año" : "/mes"}
               </span>
             )}
           </div>
@@ -378,7 +392,7 @@ export function BillingPageClient() {
 
           {isActive && sub?.currentPeriodEnd && (
             <p className="text-sm text-text-muted">
-              Próximo cobro:{" "}
+              {isAnnualSub ? "Vence el" : "Próximo cobro:"}{" "}
               {new Date(sub.currentPeriodEnd).toLocaleDateString("es-CO", {
                 day: "numeric",
                 month: "long",
@@ -445,6 +459,8 @@ export function BillingPageClient() {
           <PlanSelector
             currentTier={plan?.tier || "basic"}
             currency={currency}
+            billingPeriod={billingPeriod}
+            onPeriodChange={setBillingPeriod}
             onSelect={handleSubscribe}
             loading={actionLoading}
           />

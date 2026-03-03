@@ -3,6 +3,7 @@ import { mercadopagoProvider } from "@/lib/billing/providers/mercadopago";
 import {
   handleSubscriptionPayment,
   handleSubscriptionPreapproval,
+  handleAnnualPayment,
 } from "@/lib/billing/engine";
 
 /**
@@ -43,9 +44,13 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "subscription_authorized_payment":
       case "payment.approved": {
-        // Payment from a subscription — process it
         if (event.resourceId) {
-          await handleSubscriptionPayment(event.resourceId);
+          // Try annual one-time payment handler first
+          const wasAnnual = await handleAnnualPayment(event.resourceId);
+          // If not annual, process as regular subscription payment
+          if (!wasAnnual) {
+            await handleSubscriptionPayment(event.resourceId);
+          }
         }
         break;
       }

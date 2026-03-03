@@ -52,4 +52,10 @@ export const stripeProvider: PaymentProvider = {
       "Stripe provider not implemented yet. Coming soon for international payments."
     );
   },
+
+  async createOneTimePayment() {
+    throw new Error(
+      "Stripe provider not implemented yet. Coming soon for international payments."
+    );
+  },
 };

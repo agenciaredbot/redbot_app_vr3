@@ -22,6 +22,8 @@ import type {
   UpdateSubscriptionParams,
   ProviderSubscriptionResult,
   ProviderSubscriptionStatus,
+  CreateOneTimePaymentParams,
+  OneTimePaymentResult,
   WebhookEvent,
   WebhookEventType,
 } from "../types";
@@ -108,6 +110,14 @@ interface MPPreapprovalResponse {
   };
   external_reference?: string;
   payer_email?: string;
+  [key: string]: unknown;
+}
+
+interface MPPreferenceResponse {
+  id: string;
+  init_point: string;
+  sandbox_init_point?: string;
+  external_reference?: string;
   [key: string]: unknown;
 }
 
@@ -376,6 +386,64 @@ export const mercadopagoProvider: PaymentProvider = {
       type: eventType,
       resourceId,
       rawPayload: body,
+    };
+  },
+
+  /**
+   * Create a one-time payment via Checkout Pro (POST /checkout/preferences).
+   * Used for annual billing — user pays the full year upfront.
+   * Returns init_point URL for MP hosted checkout (same UX as subscriptions).
+   */
+  async createOneTimePayment(
+    params: CreateOneTimePaymentParams
+  ): Promise<OneTimePaymentResult> {
+    const {
+      title,
+      description,
+      amountCents,
+      externalReference,
+      payerEmail,
+      backUrls,
+    } = params;
+
+    const unitPrice = centavosToWhole(amountCents);
+
+    const body = {
+      items: [
+        {
+          title,
+          description,
+          quantity: 1,
+          unit_price: unitPrice,
+          currency_id: "COP",
+        },
+      ],
+      payer: {
+        email: payerEmail,
+      },
+      external_reference: externalReference,
+      back_urls: {
+        success: backUrls.success,
+        failure: backUrls.failure,
+        pending: backUrls.pending,
+      },
+      auto_return: "approved",
+      notification_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://redbot.app"}/api/webhooks/mercadopago`,
+      statement_descriptor: "Redbot Anual",
+    };
+
+    const response = await mpRequest<MPPreferenceResponse>(
+      "/checkout/preferences",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
+    );
+
+    return {
+      preferenceId: response.id,
+      initPoint: response.init_point,
+      rawResponse: response as unknown as Record<string, unknown>,
     };
   },
 };

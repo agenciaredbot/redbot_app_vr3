@@ -9,6 +9,7 @@
 
 export type PaymentProviderName = "mercadopago" | "stripe";
 export type BillingCurrency = "COP" | "USD";
+export type BillingPeriod = "monthly" | "annual";
 export type PaymentMethodType = "card";
 
 export type SubscriptionStatus =
@@ -111,6 +112,34 @@ export interface WebhookEvent {
 }
 
 // ============================================================
+// One-Time Payment (for annual billing via Checkout Pro)
+// ============================================================
+
+export interface CreateOneTimePaymentParams {
+  title: string;
+  description: string;
+  /** Amount in centavos (COP) or cents (USD) */
+  amountCents: number;
+  currency: BillingCurrency;
+  /** Organization ID for external_reference */
+  externalReference: string;
+  payerEmail: string;
+  backUrls: {
+    success: string;
+    failure: string;
+    pending: string;
+  };
+}
+
+export interface OneTimePaymentResult {
+  /** MP preference ID */
+  preferenceId: string;
+  /** Hosted checkout URL — redirect user here */
+  initPoint: string;
+  rawResponse?: Record<string, unknown>;
+}
+
+// ============================================================
 // Provider Interface
 // ============================================================
 
@@ -151,6 +180,11 @@ export interface PaymentProvider {
 
   /** Parse raw webhook payload into normalized event */
   parseWebhookEvent(body: Record<string, unknown>): WebhookEvent;
+
+  /** Create a one-time payment preference (for annual billing) */
+  createOneTimePayment(
+    params: CreateOneTimePaymentParams
+  ): Promise<OneTimePaymentResult>;
 }
 
 // ============================================================
@@ -166,6 +200,8 @@ export interface SubscribeParams {
   payerEmail: string;
   /** Override the provider (defaults to 'mercadopago') */
   provider?: PaymentProviderName;
+  /** Billing period — 'monthly' (recurring) or 'annual' (one-time) */
+  billingPeriod?: BillingPeriod;
 }
 
 export interface ChangePlanParams {
@@ -185,8 +221,10 @@ export interface SubscriptionInfo {
   amountCents: number;
   currency: BillingCurrency;
   retryCount: number;
-  /** MP preapproval ID */
+  /** MP preapproval ID or preference ID (for annual) */
   providerSubscriptionId: string | null;
+  /** Billing period: monthly (recurring) or annual (one-time) */
+  billingPeriod: BillingPeriod;
 }
 
 export interface InvoiceInfo {

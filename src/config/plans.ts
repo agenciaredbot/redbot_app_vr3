@@ -1,5 +1,5 @@
 import type { PlanTier } from "@/lib/supabase/types";
-import type { BillingCurrency } from "@/lib/billing/types";
+import type { BillingCurrency, BillingPeriod } from "@/lib/billing/types";
 
 export interface PlanDefinition {
   name: string;
@@ -88,8 +88,16 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
   },
 };
 
+// ============================================================
+// Annual Pricing — 1 month free (pay 11, get 12)
+// ============================================================
+
+export const ANNUAL_MONTHS = 12;
+export const ANNUAL_DISCOUNT_MONTHS = 1;
+export const ANNUAL_PAID_MONTHS = ANNUAL_MONTHS - ANNUAL_DISCOUNT_MONTHS; // 11
+
 /**
- * Get the price for a plan in the appropriate currency
+ * Get the monthly price for a plan in the appropriate currency
  */
 export function getPlanPrice(
   tier: PlanTier,
@@ -97,6 +105,39 @@ export function getPlanPrice(
 ): number {
   const plan = PLANS[tier];
   return currency === "COP" ? plan.priceCOPCents : plan.priceUSDCents;
+}
+
+/**
+ * Get the total annual price (11 months)
+ */
+export function getAnnualPrice(
+  tier: PlanTier,
+  currency: BillingCurrency
+): number {
+  return getPlanPrice(tier, currency) * ANNUAL_PAID_MONTHS;
+}
+
+/**
+ * Get the effective monthly rate when paying annually
+ * (total annual / 12 months)
+ */
+export function getAnnualMonthlyEquivalent(
+  tier: PlanTier,
+  currency: BillingCurrency
+): number {
+  return Math.round(getAnnualPrice(tier, currency) / ANNUAL_MONTHS);
+}
+
+/**
+ * Get price for a billing period (monthly or annual total)
+ */
+export function getPlanPriceForPeriod(
+  tier: PlanTier,
+  currency: BillingCurrency,
+  billingPeriod: BillingPeriod = "monthly"
+): number {
+  if (billingPeriod === "annual") return getAnnualPrice(tier, currency);
+  return getPlanPrice(tier, currency);
 }
 
 /**

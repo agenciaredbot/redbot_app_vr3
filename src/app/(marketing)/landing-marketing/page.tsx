@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { PricingSection } from "@/components/marketing/pricing-section";
 
 export const metadata: Metadata = {
   title: "Redbot — Tu agente inmobiliario IA, siempre disponible",
@@ -938,144 +939,8 @@ export default function LandingMarketingPage() {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
-      <section
-        id="planes"
-        className="py-20 md:py-28 px-6 border-t border-border-glass"
-      >
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <SectionBadge text="Planes" />
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
-              Elige el plan para tu inmobiliaria
-            </h2>
-            <p className="mt-4 text-text-secondary max-w-xl mx-auto">
-              Todos los planes incluyen 15 días de prueba gratis. Sin tarjeta de
-              crédito.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Starter */}
-            <div className="bg-bg-glass backdrop-blur-xl border border-border-glass rounded-3xl p-7 flex flex-col">
-              <div>
-                <h3 className="text-lg font-semibold text-text-primary">
-                  Starter
-                </h3>
-                <p className="text-sm text-text-muted mt-1">
-                  Para empezar a automatizar
-                </p>
-              </div>
-              <div className="mt-6">
-                <span className="text-4xl font-bold text-text-primary">
-                  $89.900
-                </span>
-                <span className="text-text-muted text-sm"> COP/mes</span>
-                <p className="text-xs text-text-muted mt-1">(~$22 USD)</p>
-              </div>
-              <ul className="mt-6 space-y-3 flex-1">
-                <CheckItem text="Hasta 50 propiedades" />
-                <CheckItem text="2 miembros del equipo" />
-                <CheckItem text="100 conversaciones/mes" />
-                <CheckItem text="Agente IA básico" />
-                <CheckItem text="Portal web con subdominio" />
-                <CheckItem text="CRM con pipeline visual" />
-                <CheckItem text="Enlaces compartibles" />
-                <CheckItem text="Notificaciones por email" />
-              </ul>
-              <Link
-                href="/register"
-                className="mt-8 block text-center py-3 px-4 rounded-xl border border-border-glass text-text-secondary hover:text-text-primary hover:bg-bg-glass-hover transition-all font-medium"
-              >
-                Comenzar gratis
-              </Link>
-            </div>
-
-            {/* Power — Recommended */}
-            <div className="relative bg-bg-glass backdrop-blur-xl border-2 border-accent-blue/40 rounded-3xl p-7 flex flex-col shadow-lg shadow-accent-blue/5">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-accent-blue text-white">
-                  Recomendado
-                </span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-text-primary">
-                  Power
-                </h3>
-                <p className="text-sm text-text-muted mt-1">
-                  Para inmobiliarias en crecimiento
-                </p>
-              </div>
-              <div className="mt-6">
-                <span className="text-4xl font-bold text-text-primary">
-                  $199.000
-                </span>
-                <span className="text-text-muted text-sm"> COP/mes</span>
-                <p className="text-xs text-text-muted mt-1">(~$50 USD)</p>
-              </div>
-              <ul className="mt-6 space-y-3 flex-1">
-                <CheckItem text="Hasta 200 propiedades" />
-                <CheckItem text="5 miembros del equipo" />
-                <CheckItem text="500 conversaciones/mes" />
-                <CheckItem text="Agente IA personalizado" />
-                <CheckItem text="Todo lo de Starter +" />
-                <CheckItem text="Canal WhatsApp 24/7" />
-                <CheckItem text="Red de oportunidades" />
-                <CheckItem text="Tags personalizados" />
-                <CheckItem text="Exportación de leads" />
-                <CheckItem text="Socios de confianza" />
-              </ul>
-              <Link
-                href="/register"
-                className="mt-8 block text-center py-3 px-4 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white font-medium hover:opacity-90 transition-opacity"
-              >
-                Comenzar gratis
-              </Link>
-            </div>
-
-            {/* Omni */}
-            <div className="bg-bg-glass backdrop-blur-xl border border-border-glass rounded-3xl p-7 flex flex-col">
-              <div>
-                <h3 className="text-lg font-semibold text-text-primary">
-                  Omni
-                </h3>
-                <p className="text-sm text-text-muted mt-1">
-                  Para redes inmobiliarias
-                </p>
-              </div>
-              <div className="mt-6">
-                <span className="text-4xl font-bold text-text-primary">
-                  $399.000
-                </span>
-                <span className="text-text-muted text-sm"> COP/mes</span>
-                <p className="text-xs text-text-muted mt-1">(~$100 USD)</p>
-              </div>
-              <ul className="mt-6 space-y-3 flex-1">
-                <CheckItem text="Propiedades ilimitadas" />
-                <CheckItem text="Equipo ilimitado" />
-                <CheckItem text="2,000 conversaciones/mes" />
-                <CheckItem text="Herramientas premium de IA" />
-                <CheckItem text="Agente IA personalizado" />
-                <CheckItem text="Canal WhatsApp 24/7" />
-                <CheckItem text="CRM avanzado: Instagram y Facebook" />
-                <CheckItem text="Publicación automática en 10+ portales" />
-                <CheckItem text="Red de oportunidades" />
-                <CheckItem text="Socios de confianza" />
-                <CheckItem text="Tags personalizados" />
-                <CheckItem text="Exportación de leads" />
-                <CheckItem text="Dominio personalizado" />
-                <CheckItem text="Soporte prioritario" />
-              </ul>
-              <Link
-                href="/register"
-                className="mt-8 block text-center py-3 px-4 rounded-xl border border-border-glass text-text-secondary hover:text-text-primary hover:bg-bg-glass-hover transition-all font-medium"
-              >
-                Comenzar gratis
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ── PRICING (Client Component with toggle) ── */}
+      <PricingSection />
 
       {/* ── COLOMBIAN MARKET ── */}
       <section className="py-20 md:py-28 px-6 border-t border-border-glass">

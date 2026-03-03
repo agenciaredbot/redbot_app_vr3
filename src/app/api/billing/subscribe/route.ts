@@ -22,11 +22,18 @@ export async function POST(request: NextRequest) {
   const { organizationId } = authResult;
 
   const body = await request.json();
-  const { planTier, payerEmail } = body;
+  const { planTier, payerEmail, billingPeriod } = body;
 
   if (!planTier || !["basic", "power", "omni"].includes(planTier)) {
     return NextResponse.json(
       { error: "Plan inválido. Debe ser 'basic', 'power' o 'omni'" },
+      { status: 400 }
+    );
+  }
+
+  if (billingPeriod && !["monthly", "annual"].includes(billingPeriod)) {
+    return NextResponse.json(
+      { error: "Período inválido. Debe ser 'monthly' o 'annual'" },
       { status: 400 }
     );
   }
@@ -43,6 +50,7 @@ export async function POST(request: NextRequest) {
       organizationId,
       planTier: planTier as PlanTier,
       payerEmail,
+      billingPeriod: billingPeriod || "monthly",
     });
 
     return NextResponse.json({

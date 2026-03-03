@@ -22,9 +22,10 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPaymentProvider } from "./provider";
-import { PLANS, getPlanPrice } from "@/config/plans";
+import { PLANS, getPlanPrice, getPlanPriceForPeriod } from "@/config/plans";
 import type {
   PaymentProviderName,
+  BillingPeriod,
   SubscriptionStatus,
   SubscribeParams,
   ChangePlanParams,
@@ -73,13 +74,13 @@ export async function subscribe(params: SubscribeParams): Promise<{
     cardTokenId,
     payerEmail,
     provider: providerName,
+    billingPeriod = "monthly",
   } = params;
 
   const supabase = createAdminClient();
   const resolvedProvider = providerName || "mercadopago";
   const paymentProvider = getPaymentProvider(resolvedProvider as PaymentProviderName);
   const currency = paymentProvider.currency;
-  const amountCents = getPlanPrice(planTier, currency);
 
   // Check for existing active/pending subscription
   const { data: existingSub } = await supabase
@@ -97,6 +98,19 @@ export async function subscribe(params: SubscribeParams): Promise<{
       throw new Error("Ya existe una suscripción activa. Cancela la actual primero.");
     }
   }
+
+  // Annual billing: one-time payment via Checkout Pro
+  if (billingPeriod === "annual") {
+    return subscribeAnnual({
+      organizationId,
+      planTier,
+      payerEmail,
+      provider: resolvedProvider,
+    });
+  }
+
+  // Monthly billing: MP native subscription via /preapproval
+  const amountCents = getPlanPrice(planTier, currency);
 
   // Get org info
   const { data: org } = await supabase
@@ -267,6 +281,196 @@ export async function handleSubscriptionPreapproval(
 }
 
 // ============================================================
+// Subscribe Annual (One-Time Payment via Checkout Pro)
+// ============================================================
+
+/**
+ * Create a one-time annual payment via MP Checkout Pro.
+ * User pays the full year upfront (11 months, 1 month free).
+ * No recurring charges — subscription expires after 12 months.
+ */
+async function subscribeAnnual(params: {
+  organizationId: string;
+  planTier: PlanTier;
+  payerEmail: string;
+  provider: string;
+}): Promise<{
+  subscriptionId: string;
+  providerSubscriptionId: string;
+  initPoint?: string;
+}> {
+  const { organizationId, planTier, payerEmail, provider: resolvedProvider } = params;
+  const supabase = createAdminClient();
+  const paymentProvider = getPaymentProvider(resolvedProvider as PaymentProviderName);
+  const currency = paymentProvider.currency;
+  const amountCents = getPlanPriceForPeriod(planTier, currency, "annual");
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://redbot.app";
+
+  const result = await paymentProvider.createOneTimePayment({
+    title: `Redbot ${PLANS[planTier].name} — Plan Anual`,
+    description: `Suscripción anual al plan ${PLANS[planTier].name} (12 meses)`,
+    amountCents,
+    currency,
+    externalReference: organizationId,
+    payerEmail,
+    backUrls: {
+      success: `${appUrl}/admin/billing?annual_payment=success`,
+      failure: `${appUrl}/admin/billing?annual_payment=failure`,
+      pending: `${appUrl}/admin/billing?annual_payment=pending`,
+    },
+  });
+
+  const now = new Date();
+  const periodEnd = addMonths(now, 12);
+
+  // Create pending subscription record
+  const { data: subscription, error: subError } = await supabase
+    .from("subscriptions")
+    .insert({
+      organization_id: organizationId,
+      provider: resolvedProvider,
+      plan_tier: planTier,
+      status: "pending" as SubscriptionStatus,
+      billing_period: "annual" as BillingPeriod,
+      current_period_start: now.toISOString(),
+      current_period_end: periodEnd.toISOString(),
+      amount_cents: amountCents,
+      currency,
+      provider_subscription_id: result.preferenceId,
+    })
+    .select("id")
+    .single();
+
+  if (subError || !subscription) {
+    throw new Error(`Error al crear suscripción anual: ${subError?.message}`);
+  }
+
+  console.log(
+    `[billing] Created annual subscription ${subscription.id} for org ${organizationId} (pending payment)`
+  );
+
+  return {
+    subscriptionId: subscription.id,
+    providerSubscriptionId: result.preferenceId,
+    initPoint: result.initPoint,
+  };
+}
+
+// ============================================================
+// Handle Annual Payment (from webhook — one-time payment)
+// ============================================================
+
+/**
+ * Handle a payment webhook that may be from an annual one-time payment.
+ * Checks if there's a pending annual subscription for the org.
+ * If found, activates it. If not found, returns false (caller should
+ * try the regular subscription payment handler).
+ */
+export async function handleAnnualPayment(
+  paymentId: string
+): Promise<boolean> {
+  const supabase = createAdminClient();
+
+  // Fetch payment details from MP
+  const { getMPPaymentDetails } = await import("./providers/mercadopago");
+  const payment = await getMPPaymentDetails(paymentId);
+
+  const orgId = payment.external_reference;
+  if (!orgId) return false;
+
+  // Find pending annual subscription for this org
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("organization_id", orgId)
+    .eq("billing_period", "annual")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!sub) return false; // Not an annual payment — let regular handler try
+
+  // Idempotency: check for existing invoice
+  const { data: existingInvoice } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("provider_transaction_id", String(payment.id))
+    .single();
+
+  if (existingInvoice) return true; // Already processed
+
+  const amountCents = Math.round(payment.transaction_amount * 100);
+  const isPaid = payment.status === "approved";
+  const isFailed = ["rejected", "cancelled", "refunded"].includes(payment.status);
+  const now = new Date();
+  const periodEnd = addMonths(now, 12);
+
+  // Create invoice
+  const { data: newInvoice } = await supabase
+    .from("invoices")
+    .insert({
+      organization_id: orgId,
+      subscription_id: sub.id,
+      provider: "mercadopago",
+      provider_transaction_id: String(payment.id),
+      amount_cents: amountCents,
+      currency: "COP",
+      status: isPaid ? "paid" : isFailed ? "failed" : "pending",
+      period_start: now.toISOString(),
+      period_end: periodEnd.toISOString(),
+      paid_at: isPaid && payment.date_approved ? payment.date_approved : null,
+      failure_reason: isFailed
+        ? `MP status: ${payment.status} (${payment.status_detail})`
+        : null,
+      metadata: {
+        mp_payment_id: payment.id,
+        mp_status: payment.status,
+        billing_period: "annual",
+      },
+    })
+    .select("id")
+    .single();
+
+  if (isPaid) {
+    // Activate annual subscription
+    await supabase
+      .from("subscriptions")
+      .update({
+        status: "active" as SubscriptionStatus,
+        current_period_start: now.toISOString(),
+        current_period_end: periodEnd.toISOString(),
+      })
+      .eq("id", sub.id);
+
+    await syncLimits(orgId, sub.plan_tier);
+    await updateOrgPlanStatus(orgId, sub.plan_tier, "active", "mercadopago");
+
+    console.log(
+      `[billing] Annual subscription ${sub.id} activated for org ${orgId} (12 months)`
+    );
+
+    // Affiliate commission (non-blocking)
+    if (newInvoice?.id) {
+      try {
+        const { processAffiliateCommission } = await import(
+          "@/lib/affiliates/commission"
+        );
+        await processAffiliateCommission(orgId, sub.plan_tier, amountCents, {
+          invoiceId: newInvoice.id,
+          periodStart: now.toISOString(),
+          periodEnd: periodEnd.toISOString(),
+        });
+      } catch (err) {
+        console.error("[billing] Annual affiliate commission error:", err);
+      }
+    }
+  }
+
+  return true; // Handled as annual payment
+}
+
+// ============================================================
 // Handle Subscription Payment (from webhook)
 // ============================================================
 
@@ -422,10 +626,13 @@ export async function changePlan(params: ChangePlanParams): Promise<void> {
   }
 
   const provider = getPaymentProvider(sub.provider as PaymentProviderName);
-  const newAmountCents = getPlanPrice(newPlanTier, provider.currency);
+  const isAnnual = sub.billing_period === "annual";
+  const newAmountCents = isAnnual
+    ? getPlanPriceForPeriod(newPlanTier, provider.currency, "annual")
+    : getPlanPrice(newPlanTier, provider.currency);
 
-  // Update in MP if we have a provider subscription ID
-  if (sub.provider_subscription_id) {
+  // Update in MP if monthly recurring (annual has no recurring sub to update)
+  if (sub.provider_subscription_id && !isAnnual) {
     await provider.updateSubscription(sub.provider_subscription_id, {
       amountCents: newAmountCents,
       reason: `Redbot ${PLANS[newPlanTier].name} — Mensual`,
@@ -538,6 +745,7 @@ export async function getSubscriptionInfo(
     currency: sub.currency,
     retryCount: sub.retry_count,
     providerSubscriptionId: sub.provider_subscription_id || null,
+    billingPeriod: (sub.billing_period as BillingPeriod) || "monthly",
   };
 }
 
@@ -639,6 +847,7 @@ async function updateOrgPlanStatus(
 export async function processBillingCron(): Promise<{
   canceledAtPeriodEnd: number;
   expiredTrials: number;
+  expiredAnnual: number;
   statusSynced: number;
   conversationsReset: number;
   errors: string[];
@@ -648,6 +857,7 @@ export async function processBillingCron(): Promise<{
   const errors: string[] = [];
   let canceledAtPeriodEnd = 0;
   let expiredTrials = 0;
+  let expiredAnnual = 0;
   let statusSynced = 0;
   let conversationsReset = 0;
 
@@ -708,11 +918,12 @@ export async function processBillingCron(): Promise<{
     }
   }
 
-  // 3. Sync status with MP (safety net — fetch status for active subs)
+  // 3. Sync status with MP (safety net — fetch status for monthly recurring subs only)
   const { data: activeSubs } = await supabase
     .from("subscriptions")
-    .select("id, organization_id, plan_tier, provider, provider_subscription_id, status")
+    .select("id, organization_id, plan_tier, provider, provider_subscription_id, status, billing_period")
     .eq("provider", "mercadopago")
+    .neq("billing_period", "annual") // Annual subs have no MP subscription to sync
     .not("status", "eq", "canceled")
     .not("provider_subscription_id", "is", null)
     .limit(50);
@@ -750,7 +961,40 @@ export async function processBillingCron(): Promise<{
     }
   }
 
-  // 4. Reset monthly conversation counters
+  // 4. Expire annual subscriptions past their period end
+  const { data: expiredAnnualSubs } = await supabase
+    .from("subscriptions")
+    .select("id, organization_id, plan_tier, provider")
+    .eq("billing_period", "annual")
+    .eq("status", "active")
+    .lt("current_period_end", now)
+    .limit(50);
+
+  for (const sub of expiredAnnualSubs || []) {
+    try {
+      await supabase
+        .from("subscriptions")
+        .update({ status: "unpaid" as SubscriptionStatus })
+        .eq("id", sub.id);
+
+      await updateOrgPlanStatus(
+        sub.organization_id,
+        sub.plan_tier,
+        "unpaid",
+        sub.provider
+      );
+      expiredAnnual++;
+      console.log(
+        `[billing] Annual subscription expired for org ${sub.organization_id}`
+      );
+    } catch (err) {
+      errors.push(
+        `Annual expiry failed for org ${sub.organization_id}: ${err instanceof Error ? err.message : "unknown"}`
+      );
+    }
+  }
+
+  // 5. Reset monthly conversation counters
   const { data: toReset } = await supabase
     .from("organizations")
     .select("id")
@@ -774,5 +1018,5 @@ export async function processBillingCron(): Promise<{
     conversationsReset++;
   }
 
-  return { canceledAtPeriodEnd, expiredTrials, statusSynced, conversationsReset, errors };
+  return { canceledAtPeriodEnd, expiredTrials, expiredAnnual, statusSynced, conversationsReset, errors };
 }

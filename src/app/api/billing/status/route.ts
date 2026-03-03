@@ -51,6 +51,8 @@ export async function GET() {
             subscription.amountCents,
             subscription.currency as BillingCurrency
           ),
+          billingPeriodLabel:
+            subscription.billingPeriod === "annual" ? "anual" : "mensual",
         }
       : null,
     hasPaymentMethod: (pmCount || 0) > 0,
