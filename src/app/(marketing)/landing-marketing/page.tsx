@@ -1054,7 +1054,15 @@ export default function LandingMarketingPage() {
                 <CheckItem text="Propiedades ilimitadas" />
                 <CheckItem text="Equipo ilimitado" />
                 <CheckItem text="2,000 conversaciones/mes" />
-                <CheckItem text="Todo lo de Power +" />
+                <CheckItem text="Herramientas premium de IA" />
+                <CheckItem text="Agente IA personalizado" />
+                <CheckItem text="Canal WhatsApp 24/7" />
+                <CheckItem text="CRM avanzado: Instagram y Facebook" />
+                <CheckItem text="Publicación automática en 10+ portales" />
+                <CheckItem text="Red de oportunidades" />
+                <CheckItem text="Socios de confianza" />
+                <CheckItem text="Tags personalizados" />
+                <CheckItem text="Exportación de leads" />
                 <CheckItem text="Dominio personalizado" />
                 <CheckItem text="Soporte prioritario" />
               </ul>
