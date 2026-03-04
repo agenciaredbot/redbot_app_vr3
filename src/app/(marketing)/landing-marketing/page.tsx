@@ -346,6 +346,12 @@ export default function LandingMarketingPage() {
             >
               Planes
             </a>
+            <Link
+              href="/afiliados"
+              className="hover:text-text-primary transition-colors"
+            >
+              Afiliados
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <Link
