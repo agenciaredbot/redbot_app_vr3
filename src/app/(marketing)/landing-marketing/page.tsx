@@ -682,7 +682,7 @@ export default function LandingMarketingPage() {
       </section>
 
       {/* ── VIDEO SECTION ── */}
-      <section className="section-light py-20 md:py-28 px-6">
+      <section className="border-t border-border-glass py-20 md:py-28 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <SectionBadge text="Demo" />
           <h2 className="mt-4 text-3xl md:text-4xl font-bold font-[family-name:var(--font-poppins)]">
@@ -691,7 +691,7 @@ export default function LandingMarketingPage() {
               Redbot
             </span>
           </h2>
-          <p className="mt-4 text-lg max-w-xl mx-auto">
+          <p className="mt-4 text-lg text-text-secondary max-w-xl mx-auto">
             Automatiza tu negocio desde una sola plataforma
           </p>
 
