@@ -356,7 +356,7 @@ export default function LandingMarketingPage() {
             </Link>
             <Link
               href="/pricing"
-              className="px-4 py-2 text-sm font-medium rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:opacity-90 transition-opacity"
+              className="px-4 py-2 text-sm font-medium rounded-xl bg-gradient-to-r from-accent-red to-accent-indigo text-white hover:opacity-90 transition-opacity"
             >
               Prueba gratis
             </Link>
@@ -376,7 +376,7 @@ export default function LandingMarketingPage() {
           <h1 className="mt-6 text-4xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight font-[family-name:var(--font-poppins)]">
             <span className="text-text-primary">Multiplica las ventas</span>
             <br />
-            <span className="bg-gradient-to-r from-accent-blue via-accent-purple to-accent-cyan bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-accent-red via-accent-indigo to-accent-blue bg-clip-text text-transparent">
               de tu inmobiliaria
             </span>
           </h1>
@@ -390,7 +390,7 @@ export default function LandingMarketingPage() {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/#planes"
-              className="w-full sm:w-auto px-8 py-4 text-base font-semibold rounded-2xl bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-purple/20"
+              className="w-full sm:w-auto px-8 py-4 text-base font-semibold rounded-2xl bg-gradient-to-r from-accent-red to-accent-indigo text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-red/20"
             >
               Ver planes y precios
             </Link>
@@ -532,7 +532,7 @@ export default function LandingMarketingPage() {
       </section>
 
       {/* ── PAIN POINTS ── */}
-      <section id="problema" className="py-20 md:py-28 px-6">
+      <section id="problema" className="section-light py-20 md:py-28 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <SectionBadge text="El problema" />
@@ -681,10 +681,40 @@ export default function LandingMarketingPage() {
         </div>
       </section>
 
+      {/* ── VIDEO SECTION ── */}
+      <section className="section-light py-20 md:py-28 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <SectionBadge text="Demo" />
+          <h2 className="mt-4 text-3xl md:text-4xl font-bold font-[family-name:var(--font-poppins)]">
+            Mira cómo funciona{" "}
+            <span className="bg-gradient-to-r from-accent-red to-accent-indigo bg-clip-text text-transparent">
+              Redbot
+            </span>
+          </h2>
+          <p className="mt-4 text-lg max-w-xl mx-auto">
+            Automatiza tu negocio desde una sola plataforma
+          </p>
+
+          <div className="mt-10 relative rounded-2xl overflow-hidden shadow-2xl">
+            <div className="aspect-video">
+              <iframe
+                src="https://www.youtube.com/embed/6xxokQ7IF8U?rel=0"
+                className="w-full h-full"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                title="Mira cómo funciona Redbot"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── FEATURES GRID ── */}
       <section
         id="funcionalidades"
-        className="py-20 md:py-28 px-6 border-t border-border-glass"
+        className="py-20 md:py-28 px-6"
       >
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
@@ -801,7 +831,7 @@ export default function LandingMarketingPage() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section className="py-20 md:py-28 px-6 border-t border-border-glass">
+      <section className="section-light py-20 md:py-28 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <SectionBadge text="Cómo funciona" />
@@ -942,8 +972,82 @@ export default function LandingMarketingPage() {
       {/* ── PRICING (Client Component with toggle) ── */}
       <PricingSection />
 
-      {/* ── COLOMBIAN MARKET ── */}
+      {/* ── BENEFITS — Socio de transformación ── */}
       <section className="py-20 md:py-28 px-6 border-t border-border-glass">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <SectionBadge text="Más que software" />
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
+              No solo obtienes software, obtienes un{" "}
+              <span className="bg-gradient-to-r from-accent-red to-accent-indigo bg-clip-text text-transparent">
+                socio de transformación digital
+              </span>
+            </h2>
+            <p className="mt-4 text-text-secondary max-w-2xl mx-auto">
+              Con más de 15 años creciendo negocios digitales, te damos acceso a
+              beneficios adicionales:
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                title:
+                  "Directorio de anuncios probados para Facebook e Instagram Ads",
+                desc: "Anuncios específicos para inmobiliarias que ya generan ventas. No empieces de cero.",
+              },
+              {
+                title: "Optimización continua de tu inversión publicitaria",
+                desc: "Auditorías mensuales para maximizar cada peso invertido en pauta.",
+              },
+              {
+                title: "Workflows de automatización personalizados",
+                desc: "Adaptamos la automatización 100% a cómo TÚ vendes, no al revés.",
+              },
+              {
+                title: "Acceso a traffickers especializados",
+                desc: "Nuestro equipo disponible cuando necesites campañas de alto impacto.",
+              },
+              {
+                title: "Suite de herramientas premium de IA",
+                desc: "Acceso completo a 4 herramientas premium para el sector inmobiliario.",
+              },
+            ].map((benefit) => (
+              <div
+                key={benefit.title}
+                className="flex gap-4 items-start bg-bg-glass backdrop-blur-xl border border-border-glass rounded-2xl p-6 hover:border-border-glass-hover transition-all"
+              >
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-accent-red to-accent-purple flex items-center justify-center mt-0.5">
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4.5 12.75l6 6 9-13.5"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-text-primary">
+                    {benefit.title}
+                  </h3>
+                  <p className="mt-1 text-sm text-text-secondary leading-relaxed">
+                    {benefit.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── COLOMBIAN MARKET ── */}
+      <section className="section-light py-20 md:py-28 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="bg-bg-glass backdrop-blur-xl border border-border-glass rounded-3xl p-8 md:p-12">
             <div className="grid md:grid-cols-2 gap-10 items-center">
@@ -999,7 +1103,7 @@ export default function LandingMarketingPage() {
               },
               {
                 q: "¿Cómo funciona la prueba gratuita?",
-                a: "Tienes 15 días para probar todas las funcionalidades de tu plan sin costo y sin tarjeta de crédito. Si no te convence, simplemente no continúas.",
+                a: "Tienes 5 días para probar todas las funcionalidades del plan Starter sin costo y sin tarjeta de crédito. Si no te convence, simplemente no continúas.",
               },
               {
                 q: "¿Puedo importar mis propiedades desde Excel?",
@@ -1065,7 +1169,7 @@ export default function LandingMarketingPage() {
           <h2 className="text-3xl md:text-5xl font-bold text-text-primary leading-tight font-[family-name:var(--font-poppins)]">
             ¿Listo para transformar
             <br />
-            <span className="bg-gradient-to-r from-accent-blue via-accent-purple to-accent-cyan bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-accent-red via-accent-indigo to-accent-blue bg-clip-text text-transparent">
               tu inmobiliaria?
             </span>
           </h2>
@@ -1077,7 +1181,7 @@ export default function LandingMarketingPage() {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/#planes"
-              className="w-full sm:w-auto px-10 py-4 text-base font-semibold rounded-2xl bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-purple/20"
+              className="w-full sm:w-auto px-10 py-4 text-base font-semibold rounded-2xl bg-gradient-to-r from-accent-red to-accent-indigo text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-red/20"
             >
               Ver planes y precios
             </Link>

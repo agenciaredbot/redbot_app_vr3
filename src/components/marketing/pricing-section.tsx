@@ -193,7 +193,7 @@ export function PricingSection({ showTrialButton = false }: PricingSectionProps)
                   href={`/register?plan=${tier}&intent=buy`}
                   className={`mt-8 block text-center py-3 px-4 rounded-xl font-medium transition-all ${
                     isPower
-                      ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:opacity-90 transition-opacity"
+                      ? "bg-gradient-to-r from-accent-red to-accent-indigo text-white hover:opacity-90 transition-opacity"
                       : "border border-border-glass text-text-secondary hover:text-text-primary hover:bg-bg-glass-hover"
                   }`}
                 >

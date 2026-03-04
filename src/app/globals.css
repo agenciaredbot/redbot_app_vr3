@@ -23,6 +23,7 @@
   --color-accent-green: #10B981;
   --color-accent-red: #EF4444;
   --color-accent-orange: #F59E0B;
+  --color-accent-indigo: #3F51B5;
 
   /* Fonts */
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
@@ -120,4 +121,53 @@ body {
 
 .animate-float-badge-3 {
   animation: float-badge-3 6s ease-in-out infinite 0.5s;
+}
+
+/* ── Light sections for marketing pages ── */
+.section-light {
+  position: relative;
+  background: #F5F5F5;
+}
+
+.section-light::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #F5F5F5;
+  z-index: 0;
+}
+
+.section-light > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Text overrides for light background */
+.section-light .text-text-primary {
+  color: #1a1a1a;
+}
+
+.section-light .text-text-secondary {
+  color: #4a4a4a;
+}
+
+.section-light .text-text-muted {
+  color: #6b6b6b;
+}
+
+/* Glass overrides for light background */
+.section-light .bg-bg-glass {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.section-light .bg-bg-glass-hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.section-light .border-border-glass {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.section-light .border-border-glass-hover {
+  border-color: rgba(0, 0, 0, 0.15);
 }
