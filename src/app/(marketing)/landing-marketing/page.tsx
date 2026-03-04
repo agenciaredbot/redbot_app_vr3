@@ -475,6 +475,16 @@ export default function LandingMarketingPage() {
                 </span>
               </div>
             </div>
+
+            {/* Floating badge: Multiidioma — mid right */}
+            <div className="absolute top-1/2 -right-4 md:-right-20 animate-float-badge-1">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-cyan/10 backdrop-blur-xl border border-accent-cyan/20 shadow-lg shadow-accent-cyan/5">
+                <span className="text-base">🌎</span>
+                <span className="text-sm text-text-primary">
+                  Multiidioma
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Stats row */}
@@ -832,6 +842,12 @@ export default function LandingMarketingPage() {
               description="Biblioteca de video tutoriales integrados para que tu equipo aprenda a usar la plataforma paso a paso."
               accent="bg-accent-green/10 text-accent-green"
             />
+            <FeatureCard
+              icon={icons.globe}
+              title="Soporte multiidioma"
+              description="Tu agente IA responde en español, inglés, portugués, francés y más. Detecta el idioma del cliente automáticamente. Ideal para ventas internacionales."
+              accent="bg-accent-cyan/10 text-accent-cyan"
+            />
           </div>
         </div>
       </section>
@@ -1018,6 +1034,10 @@ export default function LandingMarketingPage() {
                 title: "Suite de herramientas premium de IA",
                 desc: "Acceso completo a 4 herramientas premium para el sector inmobiliario.",
               },
+              {
+                title: "Ventas internacionales sin barreras de idioma",
+                desc: "Tu agente IA detecta el idioma del cliente y responde automáticamente en español, inglés, portugués y más. Abre tu inmobiliaria al mundo.",
+              },
             ].map((benefit) => (
               <div
                 key={benefit.title}
@@ -1079,6 +1099,7 @@ export default function LandingMarketingPage() {
                   "Pagos con Mercado Pago en pesos colombianos",
                   "WhatsApp integrado — el canal preferido de los colombianos",
                   "Red de oportunidades entre inmobiliarias colombianas",
+                  "Soporte multiidioma para compradores internacionales 🌎",
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-3">
                     <span className="w-2 h-2 rounded-full bg-accent-green flex-shrink-0" />
