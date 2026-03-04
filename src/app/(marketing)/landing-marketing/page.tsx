@@ -831,7 +831,7 @@ export default function LandingMarketingPage() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section className="section-light py-20 md:py-28 px-6">
+      <section className="border-t border-border-glass py-20 md:py-28 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <SectionBadge text="Cómo funciona" />
