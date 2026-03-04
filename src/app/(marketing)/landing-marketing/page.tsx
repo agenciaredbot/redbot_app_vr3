@@ -1085,6 +1085,121 @@ export default function LandingMarketingPage() {
         </div>
       </section>
 
+      {/* ── AFFILIATE PROGRAM ── */}
+      <section className="py-20 md:py-28 px-6 border-t border-border-glass">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <SectionBadge text="Programa de Afiliados" />
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
+              Gana dinero refiriendo inmobiliarias a{" "}
+              <span className="bg-gradient-to-r from-accent-red via-accent-indigo to-accent-blue bg-clip-text text-transparent">
+                Redbot
+              </span>
+            </h2>
+            <p className="mt-4 text-lg text-text-secondary max-w-2xl mx-auto">
+              Comisiones recurrentes mensuales por cada agencia que refieras.
+              Sin inversión, sin complicaciones.
+            </p>
+          </div>
+
+          {/* Commission rates mini grid */}
+          <div className="grid grid-cols-3 gap-4 mb-10">
+            {[
+              { plan: "Starter", rate: "10%", amount: "$8,990", price: "$89,900" },
+              { plan: "Power", rate: "15%", amount: "$29,850", price: "$199,000" },
+              { plan: "Omni", rate: "20%", amount: "$79,800", price: "$399,000" },
+            ].map((item) => (
+              <div
+                key={item.plan}
+                className="bg-bg-glass backdrop-blur-xl border border-border-glass rounded-2xl p-5 text-center"
+              >
+                <p className="text-xs text-text-muted mb-1">{item.plan}</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-accent-red to-accent-indigo bg-clip-text text-transparent">
+                  {item.rate}
+                </p>
+                <p className="text-xs text-text-muted mt-1">comisión</p>
+                <div className="mt-3 pt-3 border-t border-border-glass/50">
+                  <p className="text-sm font-semibold text-accent-green">
+                    {item.amount}
+                  </p>
+                  <p className="text-[10px] text-text-muted">COP/mes por referido</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Compact earnings table */}
+          <div className="bg-bg-glass backdrop-blur-xl border border-border-glass rounded-2xl overflow-hidden mb-10">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border-glass">
+                    <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">
+                      Referidos
+                    </th>
+                    <th className="px-4 md:px-6 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider">
+                      Starter
+                    </th>
+                    <th className="px-4 md:px-6 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider">
+                      Power
+                    </th>
+                    <th className="px-4 md:px-6 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider">
+                      Omni
+                    </th>
+                    <th className="px-4 md:px-6 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">
+                      Ingreso/mes
+                    </th>
+                    <th className="px-4 md:px-6 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">
+                      Ingreso/año
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { refs: 5, s: 3, p: 1, o: 1, monthly: 136620, annual: 1639440 },
+                    { refs: 10, s: 5, p: 3, o: 2, monthly: 294100, annual: 3529200 },
+                    { refs: 20, s: 8, p: 7, o: 5, monthly: 679870, annual: 8158440 },
+                    { refs: 50, s: 20, p: 18, o: 12, monthly: 1674900, annual: 20098800, hl: true },
+                  ].map((r) => (
+                    <tr
+                      key={r.refs}
+                      className={`border-b border-border-glass/50 ${r.hl ? "bg-accent-green/5" : ""}`}
+                    >
+                      <td className="px-4 md:px-6 py-3 font-semibold text-text-primary">{r.refs}</td>
+                      <td className="px-4 md:px-6 py-3 text-center text-text-secondary">{r.s}</td>
+                      <td className="px-4 md:px-6 py-3 text-center text-text-secondary">{r.p}</td>
+                      <td className="px-4 md:px-6 py-3 text-center text-text-secondary">{r.o}</td>
+                      <td className="px-4 md:px-6 py-3 text-right font-semibold text-accent-green">
+                        ${r.monthly.toLocaleString("es-CO")}
+                      </td>
+                      <td className="px-4 md:px-6 py-3 text-right font-bold text-accent-green">
+                        ${r.annual.toLocaleString("es-CO")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="px-6 py-3 text-xs text-text-muted border-t border-border-glass/50">
+              * Proyecciones basadas en comisiones recurrentes. Mezcla realista de planes.
+            </p>
+          </div>
+
+          {/* CTA */}
+          <div className="text-center">
+            <Link
+              href="/afiliados"
+              className="inline-flex px-10 py-4 text-base font-semibold rounded-2xl bg-gradient-to-r from-accent-red to-accent-indigo text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-red/20"
+            >
+              Conocer el programa de afiliados
+            </Link>
+            <p className="mt-4 text-xs text-text-muted">
+              Registro gratuito. Aprobación en menos de 24 horas.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── FAQ ── */}
       <section className="py-20 md:py-28 px-6 border-t border-border-glass">
         <div className="max-w-3xl mx-auto">
@@ -1278,7 +1393,7 @@ export default function LandingMarketingPage() {
                 Crear cuenta
               </Link>
               <Link
-                href="/register"
+                href="/afiliados"
                 className="hover:text-text-primary transition-colors"
               >
                 Programa de afiliados
