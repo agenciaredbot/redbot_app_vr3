@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   PLANS,
@@ -85,6 +86,12 @@ const usdEquivalents: Record<PlanTier, { monthly: number; annual: number }> = {
   omni: { monthly: 100, annual: 1100 },
 };
 
+const planImages: Record<PlanTier, string> = {
+  basic: "/marketing/assets/redbot-starter.png",
+  power: "/marketing/assets/redbot-power.png",
+  omni: "/marketing/assets/redbot-omni.png",
+};
+
 interface PricingSectionProps {
   showTrialButton?: boolean;
 }
@@ -148,9 +155,32 @@ export function PricingSection({ showTrialButton = false }: PricingSectionProps)
                   </div>
                 )}
 
-                <div>
+                <div className="flex justify-center mb-4">
+                  <Image
+                    src={planImages[tier]}
+                    alt={`Redbot ${plan.name}`}
+                    width={tier === "basic" ? 80 : 120}
+                    height={tier === "basic" ? 80 : 120}
+                    className={`object-contain drop-shadow-lg ${
+                      tier === "basic" ? "w-20 h-20" : "w-28 h-28"
+                    }`}
+                  />
+                </div>
+
+                <div className="text-center">
                   <h3 className="text-lg font-semibold text-text-primary">
-                    {plan.name}
+                    Redbot{" "}
+                    <span
+                      className={`italic ${
+                        tier === "basic"
+                          ? "text-accent-red"
+                          : tier === "power"
+                            ? "text-accent-purple"
+                            : "text-yellow-400"
+                      }`}
+                    >
+                      {plan.name}
+                    </span>
                   </h3>
                   <p className="text-sm text-text-muted mt-1">
                     {planDescriptions[tier]}
