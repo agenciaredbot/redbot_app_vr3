@@ -355,7 +355,7 @@ export default function LandingMarketingPage() {
               Iniciar sesión
             </Link>
             <Link
-              href="/register"
+              href="/pricing"
               className="px-4 py-2 text-sm font-medium rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:opacity-90 transition-opacity"
             >
               Prueba gratis
@@ -389,10 +389,10 @@ export default function LandingMarketingPage() {
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/register"
+              href="/#planes"
               className="w-full sm:w-auto px-8 py-4 text-base font-semibold rounded-2xl bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-purple/20"
             >
-              Comenzar gratis — 15 días
+              Ver planes y precios
             </Link>
             <a
               href="#funcionalidades"
@@ -1076,15 +1076,15 @@ export default function LandingMarketingPage() {
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/register"
+              href="/#planes"
               className="w-full sm:w-auto px-10 py-4 text-base font-semibold rounded-2xl bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-purple/20"
             >
-              Comenzar gratis — 15 días
+              Ver planes y precios
             </Link>
           </div>
 
           <p className="mt-6 text-xs text-text-muted">
-            Sin tarjeta de crédito. Configura tu inmobiliaria en minutos.
+            Configura tu inmobiliaria en minutos.
           </p>
         </div>
       </section>

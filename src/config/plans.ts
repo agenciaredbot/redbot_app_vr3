@@ -31,7 +31,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     tier: "basic",
     priceCOPCents: 89_900_00, // $89,900 COP
     priceUSDCents: 22_00, // $22 USD
-    trialDays: 15,
+    trialDays: 5,
     defaultCommissionPercent: 10,
     limits: {
       maxProperties: 50,
@@ -51,7 +51,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     tier: "power",
     priceCOPCents: 199_000_00, // $199,000 COP
     priceUSDCents: 50_00, // $50 USD
-    trialDays: 15,
+    trialDays: 0,
     defaultCommissionPercent: 15,
     limits: {
       maxProperties: 200,
@@ -71,7 +71,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     tier: "omni",
     priceCOPCents: 399_000_00, // $399,000 COP
     priceUSDCents: 100_00, // $100 USD
-    trialDays: 15,
+    trialDays: 0,
     defaultCommissionPercent: 20,
     limits: {
       maxProperties: -1,
@@ -87,6 +87,16 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     },
   },
 };
+
+// ============================================================
+// Trial eligibility — only Starter (basic) gets a free trial
+// ============================================================
+
+export const TRIAL_ELIGIBLE_TIERS: PlanTier[] = ["basic"];
+
+export function isTrialEligible(tier: PlanTier): boolean {
+  return TRIAL_ELIGIBLE_TIERS.includes(tier);
+}
 
 // ============================================================
 // Annual Pricing — 1 month free (pay 11, get 12)

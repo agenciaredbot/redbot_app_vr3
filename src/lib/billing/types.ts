@@ -202,6 +202,14 @@ export interface SubscribeParams {
   provider?: PaymentProviderName;
   /** Billing period — 'monthly' (recurring) or 'annual' (one-time) */
   billingPeriod?: BillingPeriod;
+  /** Override back URL for monthly subscription hosted checkout */
+  backUrl?: string;
+  /** Override back URLs for annual one-time payment */
+  backUrls?: {
+    success: string;
+    failure: string;
+    pending: string;
+  };
 }
 
 export interface ChangePlanParams {

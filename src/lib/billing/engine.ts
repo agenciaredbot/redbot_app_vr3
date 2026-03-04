@@ -106,6 +106,7 @@ export async function subscribe(params: SubscribeParams): Promise<{
       planTier,
       payerEmail,
       provider: resolvedProvider,
+      backUrls: params.backUrls,
     });
   }
 
@@ -137,7 +138,7 @@ export async function subscribe(params: SubscribeParams): Promise<{
     amountCents,
     currency,
     externalReference: organizationId,
-    backUrl: `${appUrl}/admin/billing`,
+    backUrl: params.backUrl || `${appUrl}/admin/billing`,
     ...(trialDaysRemaining > 0 && {
       freeTrial: { frequencyDays: trialDaysRemaining },
     }),
@@ -294,6 +295,7 @@ async function subscribeAnnual(params: {
   planTier: PlanTier;
   payerEmail: string;
   provider: string;
+  backUrls?: { success: string; failure: string; pending: string };
 }): Promise<{
   subscriptionId: string;
   providerSubscriptionId: string;
@@ -313,7 +315,7 @@ async function subscribeAnnual(params: {
     currency,
     externalReference: organizationId,
     payerEmail,
-    backUrls: {
+    backUrls: params.backUrls || {
       success: `${appUrl}/admin/billing?annual_payment=success`,
       failure: `${appUrl}/admin/billing?annual_payment=failure`,
       pending: `${appUrl}/admin/billing?annual_payment=pending`,
@@ -915,6 +917,41 @@ export async function processBillingCron(): Promise<{
       expiredTrials++;
     } catch (err) {
       errors.push(`Trial expiry failed for org ${sub.organization_id}: ${err instanceof Error ? err.message : "unknown"}`);
+    }
+  }
+
+  // 2.5. Expire org-level trials (orgs with trialing status but no subscription record)
+  // This handles the free trial flow where orgs are created without a subscription
+  const { data: trialOrgs } = await supabase
+    .from("organizations")
+    .select("id, plan_tier")
+    .eq("plan_status", "trialing")
+    .lt("trial_ends_at", now)
+    .limit(50);
+
+  for (const org of trialOrgs || []) {
+    try {
+      // Check if there's an active subscription — if so, skip (handled by section 2)
+      const { data: existingSub } = await supabase
+        .from("subscriptions")
+        .select("id")
+        .eq("organization_id", org.id)
+        .not("status", "eq", "canceled")
+        .limit(1)
+        .maybeSingle();
+
+      if (!existingSub) {
+        // No subscription — standalone trial that expired
+        await supabase
+          .from("organizations")
+          .update({ plan_status: "unpaid" })
+          .eq("id", org.id);
+
+        expiredTrials++;
+        console.log(`[billing] Org-level trial expired for org ${org.id}`);
+      }
+    } catch (err) {
+      errors.push(`Org trial expiry failed for org ${org.id}: ${err instanceof Error ? err.message : "unknown"}`);
     }
   }
 

@@ -58,10 +58,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Set subdomain in headers for downstream consumption
+  // Set subdomain and pathname in headers for downstream consumption
   if (subdomain) {
     response.headers.set("x-organization-slug", subdomain);
   }
+  response.headers.set("x-pathname", pathname);
 
   // Route: Super admin panel — requires auth, no subdomain rewrite
   if (pathname.startsWith("/super-admin")) {
@@ -86,7 +87,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Route: Tenant pages — rewrite to /t/[slug] route group
-  if (subdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/super-admin") && !pathname.startsWith("/api") && !pathname.startsWith("/auth") && !pathname.startsWith("/login") && !pathname.startsWith("/register") && !pathname.startsWith("/join") && !pathname.startsWith("/afiliados") && !pathname.startsWith("/verify-email") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
+  if (subdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/super-admin") && !pathname.startsWith("/api") && !pathname.startsWith("/auth") && !pathname.startsWith("/login") && !pathname.startsWith("/register") && !pathname.startsWith("/join") && !pathname.startsWith("/afiliados") && !pathname.startsWith("/verify-email") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password") && !pathname.startsWith("/checkout") && !pathname.startsWith("/pricing")) {
     const url = request.nextUrl.clone();
     url.pathname = `/t/${subdomain}${pathname}`;
     return NextResponse.rewrite(url, { headers: response.headers });

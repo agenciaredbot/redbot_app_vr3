@@ -12,9 +12,11 @@ export const registerSchema = z.object({
   email: z.string().email("Correo electrónico inválido"),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   organizationName: z.string().min(2, "El nombre de la empresa debe tener al menos 2 caracteres"),
+  planTier: z.enum(["basic", "power", "omni"]).optional().default("basic"),
+  intent: z.enum(["buy", "trial"]).optional().default("trial"),
 });
 
-export type RegisterInput = z.infer<typeof registerSchema>;
+export type RegisterInput = z.input<typeof registerSchema>;
 
 export const joinSchema = z.object({
   token: z.string().uuid("Token de invitación inválido"),

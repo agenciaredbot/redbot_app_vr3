@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { registerSchema } from "@/lib/validators/auth";
 import { generateSlug } from "@/lib/utils/slug";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
-import { PLANS } from "@/config/plans";
+import { PLANS, isTrialEligible } from "@/config/plans";
+import type { PlanTier } from "@/lib/supabase/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +29,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { fullName, email, password, organizationName } = parsed.data;
+    const { fullName, email, password, organizationName, planTier, intent } = parsed.data;
+
+    // Validate trial eligibility
+    if (intent === "trial" && !isTrialEligible(planTier as PlanTier)) {
+      return NextResponse.json(
+        { error: "La prueba gratuita solo está disponible para el plan Starter" },
+        { status: 400 }
+      );
+    }
 
     // Use anon client for signUp — this triggers the confirmation email via SMTP
     const authClient = createClient(
@@ -92,19 +101,26 @@ export async function POST(request: NextRequest) {
       slug = `${slug}-${Math.random().toString(36).substring(2, 6)}`;
     }
 
-    // Create organization with explicit plan limits (prevents desync with DB defaults)
-    const defaultPlan = PLANS["basic"];
+    // Create organization with plan based on intent
+    const selectedPlan = PLANS[planTier as PlanTier] || PLANS["basic"];
+    const isBuy = intent === "buy";
+
+    const trialEndsAt = isBuy
+      ? null
+      : new Date(Date.now() + selectedPlan.trialDays * 24 * 60 * 60 * 1000).toISOString();
+
     const { data: org, error: orgError } = await supabase
       .from("organizations")
       .insert({
         name: organizationName,
         slug,
         email,
-        plan_tier: "basic",
-        plan_status: "trialing",
-        max_properties: defaultPlan.limits.maxProperties,
-        max_agents: defaultPlan.limits.maxAgents,
-        max_conversations_per_month: defaultPlan.limits.maxConversationsPerMonth,
+        plan_tier: planTier as PlanTier,
+        plan_status: isBuy ? "unpaid" : "trialing",
+        trial_ends_at: trialEndsAt,
+        max_properties: selectedPlan.limits.maxProperties,
+        max_agents: selectedPlan.limits.maxAgents,
+        max_conversations_per_month: selectedPlan.limits.maxConversationsPerMonth,
       })
       .select()
       .single();
@@ -176,6 +192,8 @@ export async function POST(request: NextRequest) {
       user: { id: signUpData.user.id, email },
       organization: { id: org.id, slug: org.slug, name: org.name },
       needsEmailConfirmation: true,
+      planTier,
+      intent,
     });
   } catch {
     return NextResponse.json(

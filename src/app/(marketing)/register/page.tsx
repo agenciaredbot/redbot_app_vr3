@@ -7,8 +7,13 @@ export const metadata = {
   title: "Crear cuenta",
 };
 
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string; intent?: string }>;
+}) {
   const tenant = await getTenantContext();
+  const { plan, intent } = await searchParams;
 
   // Block new org registration from tenant subdomains
   if (tenant.isSubdomain) {
@@ -53,7 +58,7 @@ export default async function RegisterPage() {
             subtitle="Comienza a gestionar tus propiedades con IA"
           />
 
-          <RegisterForm />
+          <RegisterForm planTier={plan} intent={intent} />
 
           <p className="mt-6 text-center text-sm text-text-muted">
             ¿Ya tienes cuenta?{" "}

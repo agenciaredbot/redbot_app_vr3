@@ -3,6 +3,7 @@ import { PropertyGrid } from "@/components/properties/property-grid";
 import { PropertyFilters } from "@/components/properties/property-filters";
 import { GlassCard } from "@/components/ui/glass-card";
 import { InlineChatWrapper } from "@/components/chat/inline-chat-wrapper";
+import { TenantMaintenancePage } from "@/components/tenant/tenant-maintenance-page";
 import { getI18nText } from "@/lib/utils/format";
 
 export default async function TenantHomePage({
@@ -19,11 +20,22 @@ export default async function TenantHomePage({
   // Get org
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name, slug, agent_name, agent_welcome_message")
+    .select("id, name, slug, agent_name, agent_welcome_message, plan_status, trial_ends_at")
     .eq("slug", slug)
     .single();
 
   if (!org) return null;
+
+  // Check subscription status — block public page for expired/unpaid orgs
+  const isActiveStatus = ["active", "trialing"].includes(org.plan_status);
+  const isExpiredTrial =
+    org.plan_status === "trialing" &&
+    org.trial_ends_at &&
+    new Date(org.trial_ends_at) < new Date();
+
+  if (!isActiveStatus || isExpiredTrial) {
+    return <TenantMaintenancePage orgName={org.name} />;
+  }
 
   // Build query
   let query = supabase

@@ -85,7 +85,11 @@ const usdEquivalents: Record<PlanTier, { monthly: number; annual: number }> = {
   omni: { monthly: 100, annual: 1100 },
 };
 
-export function PricingSection() {
+interface PricingSectionProps {
+  showTrialButton?: boolean;
+}
+
+export function PricingSection({ showTrialButton = false }: PricingSectionProps) {
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
   const isAnnual = period === "annual";
   const tiers: PlanTier[] = ["basic", "power", "omni"];
@@ -104,8 +108,7 @@ export function PricingSection() {
             Elige el plan para tu inmobiliaria
           </h2>
           <p className="mt-4 text-text-secondary max-w-xl mx-auto">
-            Todos los planes incluyen 15 dias de prueba gratis. Sin tarjeta de
-            credito.
+            Elige el plan ideal para tu inmobiliaria.
           </p>
         </div>
 
@@ -187,15 +190,25 @@ export function PricingSection() {
                 </ul>
 
                 <Link
-                  href="/register"
+                  href={`/register?plan=${tier}&intent=buy`}
                   className={`mt-8 block text-center py-3 px-4 rounded-xl font-medium transition-all ${
                     isPower
                       ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:opacity-90 transition-opacity"
                       : "border border-border-glass text-text-secondary hover:text-text-primary hover:bg-bg-glass-hover"
                   }`}
                 >
-                  Comenzar gratis
+                  Adquirir {plan.name}
                 </Link>
+
+                {/* Trial button — only for Starter on the /pricing page */}
+                {showTrialButton && tier === "basic" && (
+                  <Link
+                    href="/register?plan=basic&intent=trial"
+                    className="mt-3 block text-center py-2.5 px-4 rounded-xl text-sm font-medium text-accent-green border border-accent-green/30 hover:bg-accent-green/10 transition-all"
+                  >
+                    Inicia una prueba gratis (5 dias)
+                  </Link>
+                )}
               </div>
             );
           })}

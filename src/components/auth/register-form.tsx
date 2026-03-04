@@ -5,11 +5,22 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registerSchema, type RegisterInput } from "@/lib/validators/auth";
+import { PLANS } from "@/config/plans";
+import type { PlanTier } from "@/lib/supabase/types";
 
-export function RegisterForm() {
+interface RegisterFormProps {
+  planTier?: string;
+  intent?: string;
+}
+
+export function RegisterForm({ planTier, intent }: RegisterFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const resolvedTier = (planTier && planTier in PLANS ? planTier : "basic") as PlanTier;
+  const resolvedIntent = intent === "buy" ? "buy" : "trial";
+  const planName = PLANS[resolvedTier]?.name || "Starter";
 
   const {
     register,
@@ -17,6 +28,10 @@ export function RegisterForm() {
     formState: { errors },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      planTier: resolvedTier,
+      intent: resolvedIntent,
+    },
   });
 
   const onSubmit = async (data: RegisterInput) => {
@@ -28,7 +43,11 @@ export function RegisterForm() {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          planTier: resolvedTier,
+          intent: resolvedIntent,
+        }),
       });
 
       const result = await response.json();
@@ -39,8 +58,15 @@ export function RegisterForm() {
         return;
       }
 
-      // Redirect to email verification page
-      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+      if (resolvedIntent === "buy") {
+        // Purchase flow: redirect to checkout page
+        router.push(
+          `/checkout?plan=${resolvedTier}&org=${result.organization.id}`
+        );
+      } else {
+        // Trial flow: redirect to email verification
+        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+      }
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
       setLoading(false);
@@ -49,6 +75,17 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {/* Contextual banner */}
+      {resolvedIntent === "buy" ? (
+        <div className="p-3 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm text-center">
+          Registrate para adquirir el plan <strong>{planName}</strong>
+        </div>
+      ) : (
+        <div className="p-3 rounded-xl bg-accent-green/10 border border-accent-green/20 text-accent-green text-sm text-center">
+          Prueba gratuita de 5 dias — Plan Starter
+        </div>
+      )}
+
       {error && (
         <div className="p-3 rounded-xl bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm">
           {error}
@@ -126,7 +163,11 @@ export function RegisterForm() {
         disabled={loading}
         className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? "Creando cuenta..." : "Crear cuenta"}
+        {loading
+          ? "Creando cuenta..."
+          : resolvedIntent === "buy"
+            ? `Crear cuenta y adquirir ${planName}`
+            : "Crear cuenta"}
       </button>
     </form>
   );
