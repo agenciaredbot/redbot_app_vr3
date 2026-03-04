@@ -159,9 +159,11 @@ export function PricingSection({ showTrialButton = false }: PricingSectionProps)
                   <Image
                     src={planImages[tier]}
                     alt={`Redbot ${plan.name}`}
-                    width={120}
-                    height={120}
-                    className="w-28 h-28 object-contain drop-shadow-lg"
+                    width={tier === "basic" ? 90 : 140}
+                    height={tier === "basic" ? 90 : 140}
+                    className={`object-contain drop-shadow-lg ${
+                      tier === "basic" ? "w-[90px] h-[90px]" : "w-[140px] h-[140px]"
+                    }`}
                   />
                 </div>
 
