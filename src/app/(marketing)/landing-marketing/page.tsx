@@ -1186,7 +1186,7 @@ export default function LandingMarketingPage() {
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/#planes"
+              href="/pricing"
               className="w-full sm:w-auto px-10 py-4 text-base font-semibold rounded-2xl bg-gradient-to-r from-accent-red to-accent-indigo text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-red/20"
             >
               Ver planes y precios
@@ -1194,7 +1194,7 @@ export default function LandingMarketingPage() {
           </div>
 
           <p className="mt-6 text-xs text-text-muted">
-            Configura tu inmobiliaria en minutos.
+            Configura tu inmobiliaria en minutos. Prueba gratis por 5 días.
           </p>
         </div>
       </section>
