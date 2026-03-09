@@ -790,8 +790,14 @@ export function generatePropertyFingerprint(row: PropertyInsertData): string {
     row.title.es.toLowerCase().trim(),
     row.city?.toLowerCase().trim() ?? "",
     String(row.built_area_m2 ?? ""),
-    String(row.sale_price || row.rent_price),
+    String(row.sale_price),
+    String(row.rent_price),
     row.external_code?.toLowerCase().trim() ?? "",
+    row.zone?.toLowerCase().trim() ?? "",
+    row.address?.toLowerCase().trim() ?? "",
+    String(row.bedrooms ?? ""),
+    String(row.bathrooms ?? ""),
+    String(row.stratum ?? ""),
   ];
   return parts.join("|");
 }

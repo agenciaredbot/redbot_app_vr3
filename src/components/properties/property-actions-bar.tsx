@@ -127,7 +127,7 @@ export function PropertyActionsBar() {
           disabled={!canAddProperty}
           title={!canAddProperty ? limitInfo?.message : undefined}
         >
-          Importar Excel
+          Importar
         </GlassButton>
         {canAddProperty ? (
           <Link href="/admin/properties/new">
