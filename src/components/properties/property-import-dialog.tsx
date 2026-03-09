@@ -6,10 +6,14 @@ import { GlassButton } from "@/components/ui/glass-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import {
   generateImportPreview,
+  generatePropertyFingerprint,
+  detectDuplicatesInFile,
   MAPPABLE_FIELDS,
   type ImportPreview,
+  type ImportRow,
   type PropertyInsertData,
 } from "@/lib/utils/property-import";
+import { generateUniqueSlug } from "@/lib/utils/slug";
 
 interface ImportResult {
   success: boolean;
@@ -24,25 +28,59 @@ interface PropertyImportDialogProps {
   onSuccess: () => void;
 }
 
-type ImportStep = "upload" | "preview" | "importing" | "results";
+type ImportSource = "excel" | "web";
+type ImportStep =
+  | "source_select"
+  | "upload"
+  | "scrape_url"
+  | "scrape_progress"
+  | "preview"
+  | "importing"
+  | "results";
+
+const MAX_SCRAPE_PAGES = 20;
+const MAX_SCRAPE_PROPERTIES = 500;
 
 export function PropertyImportDialog({
   open,
   onClose,
   onSuccess,
 }: PropertyImportDialogProps) {
-  const [step, setStep] = useState<ImportStep>("upload");
-  const [file, setFile] = useState<File | null>(null);
-  const [fileBuffer, setFileBuffer] = useState<ArrayBuffer | null>(null);
+  // Shared state
+  const [step, setStep] = useState<ImportStep>("source_select");
+  const [source, setSource] = useState<ImportSource | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [manualOverrides, setManualOverrides] = useState<
-    Record<string, string>
-  >({});
+  const [manualOverrides, setManualOverrides] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+
+  // Excel-specific state
+  const [file, setFile] = useState<File | null>(null);
+  const [fileBuffer, setFileBuffer] = useState<ArrayBuffer | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Web scrape state
+  const [scrapeUrl, setScrapeUrl] = useState("");
+  const [scrapeProperties, setScrapeProperties] = useState<PropertyInsertData[]>([]);
+  const [scrapeProgress, setScrapeProgress] = useState({
+    page: 0,
+    total: 0,
+    siteTitle: "",
+  });
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [scrapeStopped, setScrapeStopped] = useState(false);
+  const scrapeAbortRef = useRef(false);
+
+  // ─── Source Selection ────────────────────────────────────────────
+
+  const selectSource = (s: ImportSource) => {
+    setSource(s);
+    setStep(s === "excel" ? "upload" : "scrape_url");
+  };
+
+  // ─── Excel Handlers ──────────────────────────────────────────────
 
   const handleFile = useCallback(async (f: File) => {
     const ext = f.name.toLowerCase().split(".").pop();
@@ -55,7 +93,6 @@ export function PropertyImportDialog({
     setResult(null);
     setManualOverrides({});
 
-    // Parse client-side immediately
     try {
       const buffer = await f.arrayBuffer();
       setFileBuffer(buffer);
@@ -92,7 +129,6 @@ export function PropertyImportDialog({
       const newOverrides = { ...manualOverrides, [header]: field };
       setManualOverrides(newOverrides);
 
-      // Re-generate preview with overrides
       if (fileBuffer) {
         const previewData = generateImportPreview(fileBuffer, newOverrides);
         setPreview(previewData);
@@ -100,6 +136,99 @@ export function PropertyImportDialog({
     },
     [manualOverrides, fileBuffer]
   );
+
+  // ─── Web Scrape Handlers ─────────────────────────────────────────
+
+  const startScraping = async () => {
+    if (!scrapeUrl.trim()) return;
+
+    // Basic URL validation
+    try {
+      new URL(scrapeUrl);
+    } catch {
+      setScrapeError("URL inválida. Incluye https:// al inicio.");
+      return;
+    }
+
+    setScrapeError(null);
+    setScrapeStopped(false);
+    scrapeAbortRef.current = false;
+    setScrapeProperties([]);
+    setScrapeProgress({ page: 0, total: 0, siteTitle: "" });
+    setStep("scrape_progress");
+
+    let currentUrl = scrapeUrl.trim();
+    let pageNumber = 1;
+    let allProperties: PropertyInsertData[] = [];
+
+    while (currentUrl && pageNumber <= MAX_SCRAPE_PAGES) {
+      // Check if user stopped
+      if (scrapeAbortRef.current) break;
+
+      setScrapeProgress((prev) => ({ ...prev, page: pageNumber }));
+
+      try {
+        const response = await fetch("/api/properties/scrape", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: currentUrl, pageNumber }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          setScrapeError(data.error || "Error extrayendo propiedades");
+          break;
+        }
+
+        const data = await response.json();
+        allProperties = [...allProperties, ...data.properties];
+        setScrapeProperties(allProperties);
+        setScrapeProgress({
+          page: pageNumber,
+          total: allProperties.length,
+          siteTitle: data.siteTitle || "",
+        });
+
+        // Continue to next page?
+        if (
+          data.nextPageUrl &&
+          allProperties.length < MAX_SCRAPE_PROPERTIES &&
+          !scrapeAbortRef.current
+        ) {
+          currentUrl = data.nextPageUrl;
+          pageNumber++;
+        } else {
+          break;
+        }
+      } catch {
+        setScrapeError("Error de conexión. Intenta de nuevo.");
+        break;
+      }
+    }
+
+    // Build preview from scraped properties
+    if (allProperties.length > 0) {
+      const previewData = buildPreviewFromScrapedProperties(allProperties);
+      setPreview(previewData);
+      setStep("preview");
+    } else if (!scrapeError) {
+      setScrapeError("No se encontraron propiedades en esta página.");
+    }
+  };
+
+  const stopScraping = () => {
+    scrapeAbortRef.current = true;
+    setScrapeStopped(true);
+
+    // If we have properties, go to preview
+    if (scrapeProperties.length > 0) {
+      const previewData = buildPreviewFromScrapedProperties(scrapeProperties);
+      setPreview(previewData);
+      setStep("preview");
+    }
+  };
+
+  // ─── Shared Handlers ─────────────────────────────────────────────
 
   const handleImport = async () => {
     if (!preview) return;
@@ -149,27 +278,46 @@ export function PropertyImportDialog({
   };
 
   const handleClose = () => {
-    setStep("upload");
-    setFile(null);
-    setFileBuffer(null);
-    setPreview(null);
-    setManualOverrides({});
-    setResult(null);
-    setParseError(null);
+    resetAll();
     onClose();
   };
 
-  const handleReset = () => {
-    setStep("upload");
+  const resetAll = () => {
+    setStep("source_select");
+    setSource(null);
     setFile(null);
     setFileBuffer(null);
     setPreview(null);
     setManualOverrides({});
     setResult(null);
     setParseError(null);
+    setScrapeUrl("");
+    setScrapeProperties([]);
+    setScrapeProgress({ page: 0, total: 0, siteTitle: "" });
+    setScrapeError(null);
+    setScrapeStopped(false);
+    scrapeAbortRef.current = false;
   };
 
-  const dialogWidth = step === "preview" ? "max-w-4xl" : "max-w-lg";
+  const goBack = () => {
+    if (step === "upload" || step === "scrape_url") {
+      setStep("source_select");
+      setSource(null);
+      setParseError(null);
+      setScrapeError(null);
+    } else if (step === "preview") {
+      if (source === "excel") {
+        setStep("upload");
+        setPreview(null);
+      } else {
+        setStep("scrape_url");
+        setPreview(null);
+      }
+    }
+  };
+
+  const dialogWidth =
+    step === "preview" || step === "scrape_progress" ? "max-w-4xl" : "max-w-lg";
 
   return (
     <GlassDialog
@@ -179,10 +327,77 @@ export function PropertyImportDialog({
       className={dialogWidth}
     >
       <div className="space-y-4">
-        {/* ─── Step 1: Upload ─── */}
+        {/* ─── Source Selection ─── */}
+        {step === "source_select" && (
+          <>
+            <p className="text-sm text-text-secondary">
+              Elige cómo quieres importar tus propiedades
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Excel option */}
+              <button
+                onClick={() => selectSource("excel")}
+                className="p-5 rounded-xl border border-border-glass hover:border-accent-blue/40 hover:bg-accent-blue/5 transition-all text-left group"
+              >
+                <svg
+                  className="w-8 h-8 mb-3 text-accent-green group-hover:scale-110 transition-transform"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <h3 className="text-sm font-medium text-text-primary">
+                  Desde Excel / CSV
+                </h3>
+                <p className="text-xs text-text-muted mt-1">
+                  Sube un archivo .xlsx o .csv con tus propiedades
+                </p>
+              </button>
+
+              {/* Web scrape option */}
+              <button
+                onClick={() => selectSource("web")}
+                className="p-5 rounded-xl border border-border-glass hover:border-accent-purple/40 hover:bg-accent-purple/5 transition-all text-left group"
+              >
+                <svg
+                  className="w-8 h-8 mb-3 text-accent-purple group-hover:scale-110 transition-transform"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                  />
+                </svg>
+                <h3 className="text-sm font-medium text-text-primary">
+                  Desde página web
+                </h3>
+                <p className="text-xs text-text-muted mt-1">
+                  Extrae propiedades automáticamente de un sitio web
+                </p>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <GlassButton variant="secondary" onClick={handleClose}>
+                Cancelar
+              </GlassButton>
+            </div>
+          </>
+        )}
+
+        {/* ─── Excel Upload ─── */}
         {step === "upload" && (
           <>
-            {/* Drop zone */}
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -237,7 +452,6 @@ export function PropertyImportDialog({
               </div>
             )}
 
-            {/* Template download + format guide */}
             <div className="flex items-center justify-between text-xs text-text-muted">
               <a
                 href="/import-template.xlsx"
@@ -266,8 +480,10 @@ export function PropertyImportDialog({
               </details>
             </div>
 
-            {/* Actions */}
-            <div className="flex justify-end pt-2">
+            <div className="flex gap-3 justify-between pt-2">
+              <GlassButton variant="secondary" onClick={goBack}>
+                Volver
+              </GlassButton>
               <GlassButton variant="secondary" onClick={handleClose}>
                 Cancelar
               </GlassButton>
@@ -275,7 +491,132 @@ export function PropertyImportDialog({
           </>
         )}
 
-        {/* ─── Step 2: Preview ─── */}
+        {/* ─── Web Scrape: URL Input ─── */}
+        {step === "scrape_url" && (
+          <>
+            <div className="space-y-3">
+              <p className="text-sm text-text-secondary">
+                Ingresa la URL de un sitio web con listados de propiedades.
+                La IA extraerá automáticamente la información.
+              </p>
+
+              <div>
+                <input
+                  type="url"
+                  value={scrapeUrl}
+                  onChange={(e) => {
+                    setScrapeUrl(e.target.value);
+                    setScrapeError(null);
+                  }}
+                  placeholder="https://www.ejemplo.com/propiedades"
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-border-glass text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple/50 focus:border-transparent transition-all"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") startScraping();
+                  }}
+                />
+              </div>
+
+              {scrapeError && (
+                <div className="p-3 rounded-xl bg-accent-red/10 border border-accent-red/20 text-accent-red text-sm">
+                  {scrapeError}
+                </div>
+              )}
+
+              <div className="text-xs text-text-muted space-y-1">
+                <p>Funciona con portales inmobiliarios y páginas propias de agencias.</p>
+                <p>Detecta automáticamente paginación y navega todas las páginas.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-between pt-2">
+              <GlassButton variant="secondary" onClick={goBack}>
+                Volver
+              </GlassButton>
+              <GlassButton
+                onClick={startScraping}
+                disabled={!scrapeUrl.trim()}
+              >
+                Iniciar extracción
+              </GlassButton>
+            </div>
+          </>
+        )}
+
+        {/* ─── Web Scrape: Progress ─── */}
+        {step === "scrape_progress" && (
+          <div className="py-6 space-y-4">
+            <div className="text-center">
+              {!scrapeError && !scrapeStopped && (
+                <div className="w-8 h-8 border-2 border-accent-purple border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              )}
+
+              {scrapeProgress.siteTitle && (
+                <p className="text-xs text-text-muted mb-2">
+                  {scrapeProgress.siteTitle}
+                </p>
+              )}
+
+              <p className="text-sm text-text-secondary">
+                {scrapeError ? (
+                  <span className="text-accent-red">{scrapeError}</span>
+                ) : scrapeStopped ? (
+                  "Extracción detenida"
+                ) : (
+                  <>
+                    Extrayendo página {scrapeProgress.page}...
+                  </>
+                )}
+              </p>
+
+              {scrapeProgress.total > 0 && (
+                <p className="text-lg font-semibold text-text-primary mt-2">
+                  {scrapeProgress.total} propiedad{scrapeProgress.total !== 1 ? "es" : ""} encontrada{scrapeProgress.total !== 1 ? "s" : ""}
+                </p>
+              )}
+            </div>
+
+            {/* Page-by-page progress bars */}
+            {scrapeProgress.page > 0 && (
+              <div className="flex gap-1 justify-center">
+                {Array.from({ length: scrapeProgress.page }, (_, i) => (
+                  <div
+                    key={i}
+                    className="w-6 h-1.5 rounded-full bg-accent-purple/60"
+                  />
+                ))}
+                {!scrapeError && !scrapeStopped && (
+                  <div className="w-6 h-1.5 rounded-full bg-accent-purple/20 animate-pulse" />
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-center pt-2">
+              {!scrapeError && !scrapeStopped && (
+                <GlassButton variant="secondary" onClick={stopScraping}>
+                  Detener y continuar
+                </GlassButton>
+              )}
+              {(scrapeError || scrapeStopped) && scrapeProperties.length === 0 && (
+                <GlassButton variant="secondary" onClick={() => setStep("scrape_url")}>
+                  Volver
+                </GlassButton>
+              )}
+              {scrapeError && scrapeProperties.length > 0 && (
+                <GlassButton
+                  onClick={() => {
+                    const previewData = buildPreviewFromScrapedProperties(scrapeProperties);
+                    setPreview(previewData);
+                    setStep("preview");
+                  }}
+                >
+                  Continuar con {scrapeProperties.length} propiedades
+                </GlassButton>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Preview ─── */}
         {step === "preview" && preview && (
           <>
             {/* Stats bar */}
@@ -298,97 +639,103 @@ export function PropertyImportDialog({
                   {preview.duplicateCount} duplicados
                 </span>
               )}
-              {preview.availableSheets.length > 1 && (
+              {source === "web" && (
+                <span className="px-3 py-1 rounded-lg bg-accent-purple/10 border border-accent-purple/20 text-accent-purple">
+                  Extraído de web
+                </span>
+              )}
+              {source === "excel" && preview.availableSheets.length > 1 && (
                 <span className="px-3 py-1 rounded-lg bg-bg-glass border border-border-glass text-text-muted">
                   Hoja: {preview.sheetName}
                 </span>
               )}
             </div>
 
-            {/* Column Mappings */}
-            <GlassCard padding="sm">
-              <h3 className="text-sm font-medium text-text-primary mb-2">
-                Columnas detectadas
-              </h3>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {preview.columnMappings.map((m) => (
-                  <div
-                    key={m.rawHeader}
-                    className="flex items-center gap-2 text-xs"
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        m.confidence === "exact"
-                          ? "bg-accent-green"
-                          : m.confidence === "contains"
-                          ? "bg-yellow-500"
-                          : "bg-orange-500"
-                      }`}
-                    />
-                    <span className="text-text-muted truncate min-w-0">
-                      {m.rawHeader}
-                    </span>
-                    <svg
-                      className="w-3 h-3 text-text-muted shrink-0"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+            {/* Column Mappings (Excel only) */}
+            {source === "excel" && (
+              <GlassCard padding="sm">
+                <h3 className="text-sm font-medium text-text-primary mb-2">
+                  Columnas detectadas
+                </h3>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {preview.columnMappings.map((m) => (
+                    <div
+                      key={m.rawHeader}
+                      className="flex items-center gap-2 text-xs"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          m.confidence === "exact"
+                            ? "bg-accent-green"
+                            : m.confidence === "contains"
+                            ? "bg-yellow-500"
+                            : "bg-orange-500"
+                        }`}
                       />
-                    </svg>
-                    <span className="text-text-secondary font-medium">
-                      {MAPPABLE_FIELDS.find((f) => f.value === m.mappedField)
-                        ?.label || m.mappedField}
-                    </span>
-                  </div>
-                ))}
+                      <span className="text-text-muted truncate min-w-0">
+                        {m.rawHeader}
+                      </span>
+                      <svg
+                        className="w-3 h-3 text-text-muted shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                      <span className="text-text-secondary font-medium">
+                        {MAPPABLE_FIELDS.find((f) => f.value === m.mappedField)
+                          ?.label || m.mappedField}
+                      </span>
+                    </div>
+                  ))}
 
-                {/* Unmapped headers with manual override */}
-                {preview.unmappedHeaders.map((header) => (
-                  <div
-                    key={header}
-                    className="flex items-center gap-2 text-xs"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-text-muted" />
-                    <span className="text-text-muted truncate min-w-0">
-                      {header}
-                    </span>
-                    <svg
-                      className="w-3 h-3 text-text-muted shrink-0"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                  {preview.unmappedHeaders.map((header) => (
+                    <div
+                      key={header}
+                      className="flex items-center gap-2 text-xs"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                    <select
-                      className="bg-bg-glass border border-border-glass rounded-md px-1.5 py-0.5 text-xs text-text-secondary focus:outline-none focus:border-accent-blue"
-                      value={manualOverrides[header] || ""}
-                      onChange={(e) =>
-                        handleManualOverride(header, e.target.value)
-                      }
-                    >
-                      <option value="">Ignorar</option>
-                      {MAPPABLE_FIELDS.map((f) => (
-                        <option key={f.value} value={f.value}>
-                          {f.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-text-muted" />
+                      <span className="text-text-muted truncate min-w-0">
+                        {header}
+                      </span>
+                      <svg
+                        className="w-3 h-3 text-text-muted shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                      <select
+                        className="bg-bg-glass border border-border-glass rounded-md px-1.5 py-0.5 text-xs text-text-secondary focus:outline-none focus:border-accent-blue"
+                        value={manualOverrides[header] || ""}
+                        onChange={(e) =>
+                          handleManualOverride(header, e.target.value)
+                        }
+                      >
+                        <option value="">Ignorar</option>
+                        {MAPPABLE_FIELDS.map((f) => (
+                          <option key={f.value} value={f.value}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            )}
 
             {/* Data Preview Table */}
             {preview.sampleData.length > 0 && (
@@ -396,33 +743,15 @@ export function PropertyImportDialog({
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-bg-glass/50">
-                      <th className="px-3 py-2 text-left text-text-muted font-medium">
-                        Título
-                      </th>
-                      <th className="px-3 py-2 text-left text-text-muted font-medium">
-                        Tipo
-                      </th>
-                      <th className="px-3 py-2 text-left text-text-muted font-medium">
-                        Negocio
-                      </th>
-                      <th className="px-3 py-2 text-right text-text-muted font-medium">
-                        Precio
-                      </th>
-                      <th className="px-3 py-2 text-left text-text-muted font-medium">
-                        Ciudad
-                      </th>
-                      <th className="px-3 py-2 text-right text-text-muted font-medium">
-                        Área
-                      </th>
-                      <th className="px-3 py-2 text-right text-text-muted font-medium">
-                        Hab
-                      </th>
-                      <th className="px-3 py-2 text-right text-text-muted font-medium">
-                        Baños
-                      </th>
-                      <th className="px-3 py-2 text-right text-text-muted font-medium">
-                        Fotos
-                      </th>
+                      <th className="px-3 py-2 text-left text-text-muted font-medium">Título</th>
+                      <th className="px-3 py-2 text-left text-text-muted font-medium">Tipo</th>
+                      <th className="px-3 py-2 text-left text-text-muted font-medium">Negocio</th>
+                      <th className="px-3 py-2 text-right text-text-muted font-medium">Precio</th>
+                      <th className="px-3 py-2 text-left text-text-muted font-medium">Ciudad</th>
+                      <th className="px-3 py-2 text-right text-text-muted font-medium">Área</th>
+                      <th className="px-3 py-2 text-right text-text-muted font-medium">Hab</th>
+                      <th className="px-3 py-2 text-right text-text-muted font-medium">Baños</th>
+                      <th className="px-3 py-2 text-right text-text-muted font-medium">Fotos</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -503,7 +832,7 @@ export function PropertyImportDialog({
 
             {/* Actions */}
             <div className="flex gap-3 justify-between pt-2">
-              <GlassButton variant="secondary" onClick={handleReset}>
+              <GlassButton variant="secondary" onClick={goBack}>
                 Volver
               </GlassButton>
               <GlassButton
@@ -517,7 +846,7 @@ export function PropertyImportDialog({
           </>
         )}
 
-        {/* ─── Step: Importing ─── */}
+        {/* ─── Importing ─── */}
         {step === "importing" && (
           <div className="py-8 text-center">
             <div className="w-8 h-8 border-2 border-accent-blue border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -527,7 +856,7 @@ export function PropertyImportDialog({
           </div>
         )}
 
-        {/* ─── Step 3: Results ─── */}
+        {/* ─── Results ─── */}
         {step === "results" && result && (
           <>
             <div className="space-y-3">
@@ -577,10 +906,9 @@ export function PropertyImportDialog({
               )}
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3 justify-between pt-2">
-              <GlassButton variant="secondary" onClick={handleReset}>
-                Importar otro archivo
+              <GlassButton variant="secondary" onClick={resetAll}>
+                Importar más
               </GlassButton>
               <GlassButton onClick={handleClose}>Cerrar</GlassButton>
             </div>
@@ -589,4 +917,85 @@ export function PropertyImportDialog({
       </div>
     </GlassDialog>
   );
+}
+
+// ─── Helper: Build ImportPreview from scraped PropertyInsertData[] ───
+
+function buildPreviewFromScrapedProperties(
+  properties: PropertyInsertData[]
+): ImportPreview {
+  // Convert to ImportRow format
+  const rows: ImportRow[] = properties.map((p, idx) => {
+    const errors: string[] = [];
+    if (!p.title.es || p.title.es.length < 3) {
+      errors.push("Título es requerido (mínimo 3 caracteres)");
+    }
+    return {
+      rowNumber: idx + 1,
+      data: {
+        title: p.title.es,
+        property_type: p.property_type,
+        business_type: p.business_type,
+        sale_price: p.sale_price,
+        rent_price: p.rent_price,
+        city: p.city,
+      },
+      errors,
+      property: errors.length === 0 ? p : undefined,
+    };
+  });
+
+  // Detect duplicates
+  const duplicates = detectDuplicatesInFile(rows);
+  for (const row of rows) {
+    if (duplicates.has(row.rowNumber)) {
+      row.errors.push("Posible duplicado");
+      row.property = undefined;
+    }
+  }
+
+  const validCount = rows.filter((r) => r.property).length;
+  const errorCount = rows.filter((r) => r.errors.length > 0).length;
+
+  // Sample data for preview table
+  const sampleData = rows.slice(0, 5).map((r) => {
+    if (r.property) {
+      return {
+        titulo: r.property.title.es,
+        tipo: r.property.property_type,
+        negocio: r.property.business_type,
+        precio: r.property.sale_price || r.property.rent_price || 0,
+        ciudad: r.property.city || "—",
+        area: r.property.built_area_m2 ?? "—",
+        hab: r.property.bedrooms,
+        banos: r.property.bathrooms,
+        fotos: r.property.images.length,
+      };
+    }
+    return {
+      titulo: String(r.data.title || "—"),
+      tipo: "—",
+      negocio: "—",
+      precio: 0,
+      ciudad: "—",
+      area: "—",
+      hab: 0,
+      banos: 0,
+      fotos: 0,
+      _error: true,
+    };
+  });
+
+  return {
+    rows,
+    columnMappings: [], // No column mapping for web scrape
+    unmappedHeaders: [],
+    sheetName: "Web",
+    availableSheets: ["Web"],
+    totalRows: properties.length,
+    validCount,
+    errorCount,
+    duplicateCount: duplicates.size,
+    sampleData,
+  };
 }

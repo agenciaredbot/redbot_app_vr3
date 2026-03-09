@@ -101,4 +101,6 @@ export const RATE_LIMITS = {
   affiliateRegister: { prefix: "aff-register", maxRequests: 5, windowSeconds: 3600 },
   /** Webhooks: 200 per minute per IP */
   webhook: { prefix: "webhook", maxRequests: 200, windowSeconds: 60 },
+  /** Web scrape: 10 page requests per minute per IP */
+  scrape: { prefix: "scrape", maxRequests: 10, windowSeconds: 60 },
 } as const;

@@ -287,7 +287,7 @@ const ABBREVIATION_MAP: Record<string, string> = {
   disp: "disponibilidad",
 };
 
-const PROPERTY_TYPE_MAP: Record<string, string> = {
+export const PROPERTY_TYPE_MAP: Record<string, string> = {
   apartamento: "apartamento",
   apto: "apartamento",
   apartment: "apartamento",
@@ -315,7 +315,7 @@ const PROPERTY_TYPE_MAP: Record<string, string> = {
   consultorio: "consultorio",
 };
 
-const BUSINESS_TYPE_MAP: Record<string, string> = {
+export const BUSINESS_TYPE_MAP: Record<string, string> = {
   venta: "venta",
   vender: "venta",
   sale: "venta",
@@ -645,13 +645,13 @@ export function mapColumns(
 
 // ─── Value Normalization ─────────────────────────────────────────
 
-function normalizePropertyType(value: unknown): string {
+export function normalizePropertyType(value: unknown): string {
   if (!value) return "apartamento";
   const normalized = String(value).toLowerCase().trim();
   return PROPERTY_TYPE_MAP[normalized] || "apartamento";
 }
 
-function normalizeBusinessType(value: unknown): string {
+export function normalizeBusinessType(value: unknown): string {
   if (!value) return "venta";
   const normalized = String(value).toLowerCase().trim();
   return BUSINESS_TYPE_MAP[normalized] || "venta";
@@ -667,7 +667,7 @@ const AVAILABILITY_MAP: Record<string, string> = {
   "no disponible": "no_disponible",
 };
 
-function normalizeAvailability(value: unknown): string {
+export function normalizeAvailability(value: unknown): string {
   if (!value) return "disponible";
   const normalized = String(value).toLowerCase().trim();
   return AVAILABILITY_MAP[normalized] || "disponible";
@@ -681,13 +681,13 @@ const PROPERTY_STATUS_MAP: Record<string, string> = {
   remodelado: "remodelado",
 };
 
-function normalizePropertyStatus(value: unknown): string {
+export function normalizePropertyStatus(value: unknown): string {
   if (!value) return "usado";
   const normalized = String(value).toLowerCase().trim();
   return PROPERTY_STATUS_MAP[normalized] || "usado";
 }
 
-function parseFeatures(value: unknown): string[] {
+export function parseFeatures(value: unknown): string[] {
   if (!value) return [];
   const str = String(value);
   // Split on comma, semicolon, pipe, or newline
@@ -701,7 +701,7 @@ function parseFeatures(value: unknown): string[] {
  * Parse image URLs from a pipe/comma/semicolon/newline-delimited string.
  * Only keeps valid http(s) URLs.
  */
-function parseImageUrls(value: unknown): string[] {
+export function parseImageUrls(value: unknown): string[] {
   if (!value) return [];
   const str = String(value).trim();
   if (!str) return [];
