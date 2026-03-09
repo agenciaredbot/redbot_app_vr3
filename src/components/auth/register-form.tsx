@@ -39,7 +39,6 @@ export function RegisterForm({ planTier, intent }: RegisterFormProps) {
     setError(null);
 
     try {
-      // Create account via API (creates org + profile)
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,15 +57,8 @@ export function RegisterForm({ planTier, intent }: RegisterFormProps) {
         return;
       }
 
-      if (resolvedIntent === "buy") {
-        // Purchase flow: redirect to checkout page
-        router.push(
-          `/checkout?plan=${resolvedTier}&org=${result.organization.id}`
-        );
-      } else {
-        // Trial flow: redirect to email verification
-        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
-      }
+      // Both buy and trial → verify email first, org is created after confirmation
+      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
       setLoading(false);
@@ -156,6 +148,18 @@ export function RegisterForm({ planTier, intent }: RegisterFormProps) {
             {errors.password.message}
           </p>
         )}
+      </div>
+
+      {/* Honeypot — invisible to humans, bots auto-fill it */}
+      <div aria-hidden="true" className="absolute -left-[9999px] -top-[9999px]">
+        <label htmlFor="website">Website</label>
+        <input
+          type="text"
+          id="website"
+          autoComplete="off"
+          tabIndex={-1}
+          {...register("website")}
+        />
       </div>
 
       <button
