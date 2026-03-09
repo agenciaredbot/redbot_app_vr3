@@ -7,7 +7,6 @@ import { GlassCard } from "@/components/ui/glass-card";
 import {
   generateImportPreview,
   generatePropertyFingerprint,
-  detectDuplicatesInFile,
   MAPPABLE_FIELDS,
   type ImportPreview,
   type ImportRow,
@@ -945,14 +944,9 @@ function buildPreviewFromScrapedProperties(
     };
   });
 
-  // Detect duplicates
-  const duplicates = detectDuplicatesInFile(rows);
-  for (const row of rows) {
-    if (duplicates.has(row.rowNumber)) {
-      row.errors.push("Posible duplicado");
-      row.property = undefined;
-    }
-  }
+  // Skip duplicate detection for web-scraped properties — each listing
+  // on the website is a distinct property, unlike Excel where rows
+  // may be accidentally duplicated.
 
   const validCount = rows.filter((r) => r.property).length;
   const errorCount = rows.filter((r) => r.errors.length > 0).length;
@@ -995,7 +989,7 @@ function buildPreviewFromScrapedProperties(
     totalRows: properties.length,
     validCount,
     errorCount,
-    duplicateCount: duplicates.size,
+    duplicateCount: 0,
     sampleData,
   };
 }
