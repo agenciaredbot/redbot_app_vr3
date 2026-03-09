@@ -61,7 +61,7 @@ const REMOVE_SELECTORS = [
 export function cleanHtml(
   html: string,
   baseUrl: string
-): { text: string; links: string[] } {
+): { text: string; links: string[]; images: string[] } {
   const $ = cheerio.load(html);
 
   // Remove unwanted elements
@@ -83,8 +83,71 @@ export function cleanHtml(
     }
   });
 
+  // Collect all image URLs before stripping HTML
+  const imageSet = new Set<string>();
+  $("img[src], img[data-src], img[data-lazy-src], img[data-original]").each((_, el) => {
+    const src =
+      $(el).attr("data-src") ||
+      $(el).attr("data-lazy-src") ||
+      $(el).attr("data-original") ||
+      $(el).attr("src") ||
+      "";
+    if (!src) return;
+    try {
+      const absoluteUrl = new URL(src, baseUrl).toString();
+      // Filter out tiny icons, tracking pixels, and placeholder images
+      if (
+        absoluteUrl.match(/\.(jpg|jpeg|png|webp)/i) &&
+        !absoluteUrl.includes("placeholder") &&
+        !absoluteUrl.includes("pixel") &&
+        !absoluteUrl.includes("1x1") &&
+        !absoluteUrl.includes("logo")
+      ) {
+        imageSet.add(absoluteUrl);
+      }
+    } catch {
+      // Invalid URL, skip
+    }
+  });
+
+  // Also check srcset for responsive images
+  $("img[srcset], source[srcset]").each((_, el) => {
+    const srcset = $(el).attr("srcset") || "";
+    // Parse srcset: "url1 300w, url2 600w, ..."
+    const entries = srcset.split(",").map((s) => s.trim().split(/\s+/)[0]);
+    for (const src of entries) {
+      if (!src) continue;
+      try {
+        const absoluteUrl = new URL(src, baseUrl).toString();
+        if (absoluteUrl.match(/\.(jpg|jpeg|png|webp)/i)) {
+          imageSet.add(absoluteUrl);
+        }
+      } catch {
+        // skip
+      }
+    }
+  });
+
+  // Replace img tags with a text marker so Claude can associate images with properties
+  $("img").each((_, el) => {
+    const src =
+      $(el).attr("data-src") ||
+      $(el).attr("data-lazy-src") ||
+      $(el).attr("data-original") ||
+      $(el).attr("src") ||
+      "";
+    const alt = $(el).attr("alt") || "";
+    if (src) {
+      try {
+        const absoluteUrl = new URL(src, baseUrl).toString();
+        $(el).replaceWith(`[IMG: ${absoluteUrl} | ${alt}]`);
+      } catch {
+        $(el).remove();
+      }
+    }
+  });
+
   // Get text content, preserving some structure
-  // Replace block elements with newlines for readability
   $("br").replaceWith("\n");
   $("p, div, li, h1, h2, h3, h4, h5, h6, tr").each((_, el) => {
     $(el).prepend("\n");
@@ -106,7 +169,7 @@ export function cleanHtml(
     text = text.substring(0, MAX_CHARS) + "\n\n[... contenido truncado ...]";
   }
 
-  return { text, links };
+  return { text, links, images: Array.from(imageSet) };
 }
 
 // ─── Jina Reader Fallback ─────────────────────────────────────────
@@ -147,6 +210,7 @@ export async function fetchWithJinaFallback(url: string): Promise<string> {
 export async function fetchPageContent(url: string): Promise<{
   text: string;
   links: string[];
+  images: string[];
   usedFallback: boolean;
 }> {
   const controller = new AbortController();
@@ -179,27 +243,27 @@ export async function fetchPageContent(url: string): Promise<{
   } catch {
     // Primary fetch failed — try Jina Reader
     const jinaText = await fetchWithJinaFallback(url);
-    return { text: jinaText, links: [], usedFallback: true };
+    return { text: jinaText, links: [], images: [], usedFallback: true };
   } finally {
     clearTimeout(timeout);
   }
 
-  // Clean the HTML
-  const { text, links } = cleanHtml(html, url);
+  // Clean the HTML (also extracts image URLs)
+  const { text, links, images } = cleanHtml(html, url);
 
   // If cleaned text is too short, the page likely needs JS rendering
   if (text.length < 500) {
     try {
       const jinaText = await fetchWithJinaFallback(url);
       if (jinaText.length > text.length) {
-        return { text: jinaText, links: [], usedFallback: true };
+        return { text: jinaText, links: [], images, usedFallback: true };
       }
     } catch {
       // Jina also failed, use what we have
     }
   }
 
-  return { text, links, usedFallback };
+  return { text, links, images, usedFallback };
 }
 
 // ─── Claude AI Extraction ─────────────────────────────────────────
@@ -208,7 +272,12 @@ const EXTRACTION_SYSTEM_PROMPT = `You are a real estate data extraction speciali
 You receive text content from a real estate website page and must extract all property listings into structured JSON.
 Always respond with ONLY a valid JSON object — no markdown, no explanation.`;
 
-function buildExtractionPrompt(text: string, url: string, pageNumber: number): string {
+function buildExtractionPrompt(text: string, url: string, pageNumber: number, pageImages: string[]): string {
+  // Include available images so Claude can associate them to properties
+  const imageSection = pageImages.length > 0
+    ? `\nAVAILABLE IMAGES FOUND ON PAGE (${pageImages.length} total):\n${pageImages.join("\n")}\n`
+    : "";
+
   return `Extract ALL property listings from this real estate website page.
 URL: ${url} (page ${pageNumber})
 
@@ -240,7 +309,7 @@ Return a JSON object with this exact structure:
       "year_built": number or null,
       "features": ["amenities/features array"],
       "external_code": "string or null - property code/reference on the site",
-      "images": ["absolute image URLs"]
+      "images": ["absolute image URLs - max 10 per property"]
     }
   ],
   "nextPageUrl": "absolute URL of next page of listings, or null"
@@ -251,11 +320,12 @@ Rules:
 - Prices in COP. Remove dots/commas as thousands separators: "$350.000.000" = 350000000
 - If "Arriendo" set rent_price, if "Venta" set sale_price. If both, set both.
 - Map: "Apto" = apartamento, "Casa" = casa, "Finca" = finca, etc.
-- Make image URLs absolute using base URL: ${url}
+- IMAGES: Associate images to each property using [IMG: url | alt] markers in the text AND the AVAILABLE IMAGES list. Match images to the property they appear near in the page. Maximum 10 images per property. Only include real property photos (not icons, logos, or UI elements).
+- Make all image URLs absolute using base URL: ${url}
 - For nextPageUrl: find pagination links (Siguiente, Next, page numbers, >>). Return full absolute URL or null.
 - If a field is unknown, use null or 0.
 - Return ONLY the JSON object.
-
+${imageSection}
 PAGE CONTENT:
 ---
 ${text}
@@ -268,7 +338,8 @@ ${text}
 export async function extractWithClaude(
   text: string,
   url: string,
-  pageNumber: number
+  pageNumber: number,
+  pageImages: string[] = []
 ): Promise<ExtractionResult> {
   const anthropic = getAnthropicClient();
 
@@ -279,7 +350,7 @@ export async function extractWithClaude(
     messages: [
       {
         role: "user",
-        content: buildExtractionPrompt(text, url, pageNumber),
+        content: buildExtractionPrompt(text, url, pageNumber, pageImages),
       },
     ],
   });
@@ -364,8 +435,8 @@ function rawToPropertyInsertData(raw: RawExtractedProperty): PropertyInsertData 
     commission_value: null,
     commission_type: "percent",
     private_notes: null,
-    images: (raw.images || []).filter(
-      (url) => url.startsWith("http://") || url.startsWith("https://")
-    ),
+    images: (raw.images || [])
+      .filter((url) => url.startsWith("http://") || url.startsWith("https://"))
+      .slice(0, 10),
   };
 }

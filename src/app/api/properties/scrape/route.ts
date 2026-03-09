@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     console.log(`[scrape] Fetching page ${pageNumber}: ${validation.sanitizedUrl}`);
 
     // Step 1: Fetch and clean page content
-    let pageContent: { text: string; links: string[]; usedFallback: boolean };
+    let pageContent: { text: string; links: string[]; images: string[]; usedFallback: boolean };
     try {
       pageContent = await fetchPageContent(validation.sanitizedUrl);
     } catch (err) {
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[scrape] Content fetched: ${pageContent.text.length} chars, fallback=${pageContent.usedFallback}`);
+    console.log(`[scrape] Content fetched: ${pageContent.text.length} chars, ${pageContent.images.length} images, fallback=${pageContent.usedFallback}`);
 
     // Step 2: Extract properties with Claude AI
     let result;
@@ -89,7 +89,8 @@ export async function POST(request: NextRequest) {
       result = await extractWithClaude(
         pageContent.text,
         validation.sanitizedUrl,
-        pageNumber
+        pageNumber,
+        pageContent.images
       );
     } catch (err) {
       console.error("[scrape] Claude extraction failed:", err);
