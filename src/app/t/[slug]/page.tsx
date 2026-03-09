@@ -5,6 +5,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { InlineChatWrapper } from "@/components/chat/inline-chat-wrapper";
 import { TenantMaintenancePage } from "@/components/tenant/tenant-maintenance-page";
 import { getI18nText } from "@/lib/utils/format";
+import { PLANS } from "@/config/plans";
+import type { PlanTier } from "@/lib/supabase/types";
 
 export default async function TenantHomePage({
   params,
@@ -20,7 +22,7 @@ export default async function TenantHomePage({
   // Get org
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name, slug, agent_name, agent_welcome_message, plan_status, trial_ends_at")
+    .select("id, name, slug, agent_name, agent_welcome_message, plan_status, trial_ends_at, plan_tier")
     .eq("slug", slug)
     .single();
 
@@ -37,7 +39,12 @@ export default async function TenantHomePage({
     return <TenantMaintenancePage orgName={org.name} />;
   }
 
-  // Build query
+  // Build query — respect plan property limits
+  const planTier = (org.plan_tier as PlanTier) || "basic";
+  const maxProperties = PLANS[planTier]?.limits.maxProperties ?? 50;
+  // -1 means unlimited; cap at 1000 for safety
+  const queryLimit = maxProperties === -1 ? 1000 : maxProperties;
+
   let query = supabase
     .from("properties")
     .select("*")
@@ -45,7 +52,7 @@ export default async function TenantHomePage({
     .eq("is_published", true)
     .order("is_featured", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(queryLimit);
 
   if (filters.type) {
     query = query.eq("property_type", filters.type);
