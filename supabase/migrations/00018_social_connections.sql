@@ -49,7 +49,7 @@ CREATE POLICY "social_connections_select_own_org"
   USING (
     organization_id IN (
       SELECT organization_id FROM user_profiles
-      WHERE user_id = auth.uid()
+      WHERE id = auth.uid()
     )
   );
 
@@ -58,7 +58,7 @@ CREATE POLICY "social_connections_insert_admin"
   WITH CHECK (
     organization_id IN (
       SELECT organization_id FROM user_profiles
-      WHERE user_id = auth.uid()
+      WHERE id = auth.uid()
         AND role IN ('super_admin', 'org_admin')
     )
   );
@@ -68,7 +68,7 @@ CREATE POLICY "social_connections_update_admin"
   USING (
     organization_id IN (
       SELECT organization_id FROM user_profiles
-      WHERE user_id = auth.uid()
+      WHERE id = auth.uid()
         AND role IN ('super_admin', 'org_admin')
     )
   );
@@ -78,7 +78,7 @@ CREATE POLICY "social_connections_delete_admin"
   USING (
     organization_id IN (
       SELECT organization_id FROM user_profiles
-      WHERE user_id = auth.uid()
+      WHERE id = auth.uid()
         AND role IN ('super_admin', 'org_admin')
     )
   );
@@ -89,7 +89,7 @@ CREATE POLICY "social_posts_select_own_org"
   USING (
     organization_id IN (
       SELECT organization_id FROM user_profiles
-      WHERE user_id = auth.uid()
+      WHERE id = auth.uid()
     )
   );
 
@@ -98,7 +98,7 @@ CREATE POLICY "social_posts_insert_admin"
   WITH CHECK (
     organization_id IN (
       SELECT organization_id FROM user_profiles
-      WHERE user_id = auth.uid()
+      WHERE id = auth.uid()
         AND role IN ('super_admin', 'org_admin')
     )
   );
@@ -107,4 +107,4 @@ CREATE POLICY "social_posts_insert_admin"
 CREATE TRIGGER set_social_connections_updated_at
   BEFORE UPDATE ON social_connections
   FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+  EXECUTE FUNCTION update_updated_at();
