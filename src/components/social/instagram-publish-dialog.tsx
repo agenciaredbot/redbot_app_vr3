@@ -13,7 +13,7 @@ interface InstagramPublishDialogProps {
   onClose: () => void;
 }
 
-type PublishState = "form" | "publishing" | "success" | "error";
+type PublishState = "form" | "cropping" | "publishing" | "success" | "error";
 
 /** Instagram carousel aspect ratio limits */
 const IG_MIN_RATIO = 0.75; // 4:5 portrait
@@ -50,6 +50,94 @@ function loadImageMeta(url: string): Promise<Omit<ImageMeta, "loading">> {
     };
     img.src = url;
   });
+}
+
+/**
+ * Crops an image to the nearest valid Instagram aspect ratio using Canvas.
+ * Center-crops: too tall → 4:5, too wide → 1.91:1.
+ * Returns a JPEG Blob.
+ */
+function cropImageToValidRatio(
+  imageUrl: string,
+  currentRatio: number
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas context unavailable"));
+        return;
+      }
+
+      // Decide target ratio
+      const targetRatio =
+        currentRatio < IG_MIN_RATIO ? IG_MIN_RATIO : IG_MAX_RATIO;
+
+      let srcX = 0;
+      let srcY = 0;
+      let srcW = img.naturalWidth;
+      let srcH = img.naturalHeight;
+
+      if (currentRatio < targetRatio) {
+        // Too tall → crop height (center)
+        const newH = img.naturalWidth / targetRatio;
+        srcY = (img.naturalHeight - newH) / 2;
+        srcH = newH;
+      } else {
+        // Too wide → crop width (center)
+        const newW = img.naturalHeight * targetRatio;
+        srcX = (img.naturalWidth - newW) / 2;
+        srcW = newW;
+      }
+
+      canvas.width = Math.round(srcW);
+      canvas.height = Math.round(srcH);
+      ctx.drawImage(
+        img,
+        Math.round(srcX),
+        Math.round(srcY),
+        Math.round(srcW),
+        Math.round(srcH),
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("toBlob failed"))),
+        "image/jpeg",
+        0.92
+      );
+    };
+    img.onerror = () =>
+      reject(new Error("No se pudo cargar la imagen para recortar"));
+    img.src = imageUrl;
+  });
+}
+
+/**
+ * Uploads a cropped image blob to the server and returns the public URL.
+ */
+async function uploadCroppedImage(blob: Blob): Promise<string> {
+  const form = new FormData();
+  form.append("image", blob, "cropped.jpg");
+
+  const res = await fetch("/api/social/upload-cropped", {
+    method: "POST",
+    body: form,
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Upload failed (${res.status})`);
+  }
+
+  const { url } = await res.json();
+  return url;
 }
 
 /**
@@ -114,23 +202,18 @@ export function InstagramPublishDialog({
   const [errorMsg, setErrorMsg] = useState("");
   const [postUrl, setPostUrl] = useState("");
   const [imageMetas, setImageMetas] = useState<ImageMeta[]>([]);
+  const [cropProgress, setCropProgress] = useState("");
 
   const images = useMemo(
     () => (property.images as string[]) || [],
     [property.images]
   );
 
-  // Count how many images have valid aspect ratios
-  const validImageCount = useMemo(
-    () => imageMetas.filter((m) => m.valid && !m.loading).length,
-    [imageMetas]
-  );
-
-  // Count invalid selected images
-  const invalidSelectedCount = useMemo(() => {
+  // Count how many selected images need cropping
+  const needsCropCount = useMemo(() => {
     let count = 0;
     selectedImages.forEach((i) => {
-      if (imageMetas[i] && !imageMetas[i].valid) count++;
+      if (imageMetas[i] && !imageMetas[i].loading && !imageMetas[i].valid) count++;
     });
     return count;
   }, [selectedImages, imageMetas]);
@@ -143,6 +226,7 @@ export function InstagramPublishDialog({
     setState("form");
     setErrorMsg("");
     setPostUrl("");
+    setCropProgress("");
     setCaption(generateDefaultCaption(property));
 
     // Initialize image metas as loading
@@ -156,14 +240,14 @@ export function InstagramPublishDialog({
     }));
     setImageMetas(initialMetas);
 
-    // Load image dimensions and select only valid ones
+    // Load image dimensions and auto-select first 10
     Promise.all(images.map(loadImageMeta)).then((metas) => {
       setImageMetas(metas.map((m) => ({ ...m, loading: false })));
 
-      // Select first up to 10 VALID images by default
+      // Select first up to 10 images (all are selectable now)
       const initialSelection = new Set<number>();
-      metas.forEach((meta, i) => {
-        if (meta.valid && initialSelection.size < 10) {
+      metas.forEach((_, i) => {
+        if (initialSelection.size < 10) {
           initialSelection.add(i);
         }
       });
@@ -204,21 +288,6 @@ export function InstagramPublishDialog({
       setErrorMsg("Selecciona al menos una imagen.");
       return;
     }
-
-    // Check for invalid aspect ratios in selection
-    const invalidIndices: number[] = [];
-    selectedImages.forEach((i) => {
-      if (imageMetas[i] && !imageMetas[i].valid) {
-        invalidIndices.push(i + 1); // 1-indexed for user display
-      }
-    });
-    if (invalidIndices.length > 0) {
-      setErrorMsg(
-        `Las fotos ${invalidIndices.join(", ")} no cumplen el formato de Instagram (ratio 4:5 a 1.91:1). Deselecciónalas para continuar.`
-      );
-      return;
-    }
-
     if (!caption.trim()) {
       setErrorMsg("Escribe un caption para el post.");
       return;
@@ -229,11 +298,56 @@ export function InstagramPublishDialog({
     }
 
     setErrorMsg("");
-    setState("publishing");
 
-    const imageUrls = Array.from(selectedImages)
-      .sort((a, b) => a - b)
-      .map((i) => images[i]);
+    // Gather selected image indices in order
+    const sortedIndices = Array.from(selectedImages).sort((a, b) => a - b);
+
+    // Check if any selected images need cropping
+    const toCrop = sortedIndices.filter(
+      (i) => imageMetas[i] && !imageMetas[i].valid
+    );
+
+    // Build final URL list — crop invalid images automatically
+    const finalUrls: string[] = [];
+
+    if (toCrop.length > 0) {
+      setState("cropping");
+
+      for (let idx = 0; idx < sortedIndices.length; idx++) {
+        const i = sortedIndices[idx];
+        const meta = imageMetas[i];
+
+        if (meta && !meta.valid) {
+          // Needs cropping
+          setCropProgress(`Recortando foto ${idx + 1} de ${sortedIndices.length}...`);
+          try {
+            const blob = await cropImageToValidRatio(images[i], meta.ratio);
+            const url = await uploadCroppedImage(blob);
+            finalUrls.push(url);
+          } catch (err) {
+            console.warn(`[ig-publish] Crop failed for image ${i}, skipping:`, err);
+            // Skip this image instead of failing the whole publish
+          }
+        } else {
+          finalUrls.push(images[i]);
+        }
+      }
+    } else {
+      // All images are valid — use original URLs directly
+      for (const i of sortedIndices) {
+        finalUrls.push(images[i]);
+      }
+    }
+
+    if (finalUrls.length === 0) {
+      setErrorMsg("No se pudieron procesar las im\u00e1genes. Intenta con otras fotos.");
+      setState("error");
+      return;
+    }
+
+    // Now publish
+    setState("publishing");
+    setCropProgress("");
 
     try {
       const res = await fetch("/api/social/publish", {
@@ -243,7 +357,7 @@ export function InstagramPublishDialog({
           propertyId: property.id,
           accountId: selectedAccount,
           caption: caption.trim(),
-          imageUrls,
+          imageUrls: finalUrls,
         }),
       });
 
@@ -253,7 +367,7 @@ export function InstagramPublishDialog({
         data = await res.json();
       } catch {
         if (res.status === 504 || res.status === 502) {
-          setErrorMsg("La publicación tardó demasiado. Puede que se haya publicado — verifica en Instagram.");
+          setErrorMsg("La publicaci\u00f3n tard\u00f3 demasiado. Puede que se haya publicado \u2014 verifica en Instagram.");
         } else {
           setErrorMsg(`Error del servidor (${res.status}).`);
         }
@@ -270,7 +384,7 @@ export function InstagramPublishDialog({
       setPostUrl(data.postUrl || "");
       setState("success");
     } catch (err) {
-      const detail = err instanceof Error ? err.message : "Error de conexión";
+      const detail = err instanceof Error ? err.message : "Error de conexi\u00f3n";
       setErrorMsg(`Error de red: ${detail}`);
       setState("error");
     }
@@ -341,7 +455,7 @@ export function InstagramPublishDialog({
               {/* Image selector */}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Selecciona las fotos ({selectedImages.size} de {Math.min(validImageCount || images.length, 10)})
+                  Selecciona las fotos ({selectedImages.size} de {Math.min(images.length, 10)})
                 </label>
                 {images.length === 0 ? (
                   <p className="text-xs text-text-muted">
@@ -358,18 +472,16 @@ export function InstagramPublishDialog({
                         return (
                           <button
                             key={i}
-                            onClick={() => !isInvalid && toggleImage(i)}
+                            onClick={() => toggleImage(i)}
                             title={
                               isInvalid
-                                ? `Formato no compatible (${meta.width}\u00d7${meta.height}, ratio ${meta.ratio.toFixed(2)}). Instagram requiere entre 4:5 y 1.91:1.`
+                                ? `Se recortar\u00e1 autom\u00e1ticamente (${meta.width}\u00d7${meta.height})`
                                 : `Foto ${i + 1}`
                             }
                             className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                              isInvalid
-                                ? "border-accent-red/60 opacity-50 cursor-not-allowed"
-                                : isSelected
-                                  ? "border-accent-blue ring-2 ring-accent-blue/30"
-                                  : "border-border-glass hover:border-border-glass-hover"
+                              isSelected
+                                ? "border-accent-blue ring-2 ring-accent-blue/30"
+                                : "border-border-glass hover:border-border-glass-hover"
                             }`}
                           >
                             <img
@@ -378,37 +490,35 @@ export function InstagramPublishDialog({
                               className="w-full h-full object-cover"
                             />
                             {/* Selected badge */}
-                            {isSelected && !isInvalid && (
+                            {isSelected && (
                               <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-blue flex items-center justify-center">
                                 <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                 </svg>
                               </div>
                             )}
-                            {/* Invalid aspect ratio badge */}
-                            {isInvalid && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                <div className="w-6 h-6 rounded-full bg-accent-red/90 flex items-center justify-center">
-                                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M12 2L2 20h20L12 2z" />
-                                  </svg>
-                                </div>
+                            {/* Auto-crop indicator */}
+                            {isInvalid && isSelected && (
+                              <div className="absolute bottom-0.5 left-0.5 px-1 py-0.5 rounded bg-black/70 flex items-center gap-0.5">
+                                <svg className="w-2.5 h-2.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4l4-2v4M20 4l-4-2v4M4 20l4 2v-4M20 20l-4 2v-4" />
+                                </svg>
+                                <span className="text-[8px] text-amber-400 font-medium">CROP</span>
                               </div>
                             )}
                           </button>
                         );
                       })}
                     </div>
-                    {/* Warning about invalid images */}
-                    {imageMetas.some((m) => !m.loading && !m.valid) && (
-                      <p className="text-[11px] text-amber-400 mt-2 flex items-start gap-1.5">
-                        <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M12 2L2 20h20L12 2z" />
+                    {/* Info about auto-crop */}
+                    {needsCropCount > 0 && (
+                      <p className="text-[11px] text-amber-400/80 mt-2 flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4l4-2v4M20 4l-4-2v4M4 20l4 2v-4M20 20l-4 2v-4" />
                         </svg>
-                        <span>
-                          Fotos marcadas tienen formato vertical (Stories/TikTok) y no son compatibles con carruseles de Instagram.
-                          Se requiere ratio entre 4:5 y 1.91:1.
-                        </span>
+                        {needsCropCount === 1
+                          ? "1 foto se recortar\u00e1 autom\u00e1ticamente al formato 4:5 para Instagram."
+                          : `${needsCropCount} fotos se recortar\u00e1n autom\u00e1ticamente al formato 4:5 para Instagram.`}
                       </p>
                     )}
                   </>
@@ -474,7 +584,7 @@ export function InstagramPublishDialog({
                 </button>
                 <button
                   onClick={handlePublish}
-                  disabled={selectedImages.size === 0 || !caption.trim() || invalidSelectedCount > 0}
+                  disabled={selectedImages.size === 0 || !caption.trim()}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-accent-pink to-accent-purple text-white text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -483,6 +593,24 @@ export function InstagramPublishDialog({
                   </svg>
                   Publicar ahora
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Cropping state */}
+          {state === "cropping" && (
+            <div className="flex flex-col items-center justify-center py-8 gap-4">
+              <svg className="w-8 h-8 animate-spin text-amber-400" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <div className="text-center">
+                <p className="text-sm font-medium text-text-primary">
+                  Ajustando im\u00e1genes...
+                </p>
+                <p className="text-xs text-text-muted mt-1">
+                  {cropProgress || "Recortando fotos al formato de Instagram..."}
+                </p>
               </div>
             </div>
           )}
