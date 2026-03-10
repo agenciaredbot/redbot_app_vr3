@@ -6,6 +6,7 @@ import { validateScrapeUrl } from "@/lib/scraper/url-validator";
 import {
   fetchPageContent,
   extractWithClaude,
+  enrichPropertyImages,
 } from "@/lib/scraper/extract-properties";
 
 export const maxDuration = 55; // Vercel timeout slightly under 60s
@@ -102,11 +103,20 @@ export async function POST(request: NextRequest) {
 
     console.log(`[scrape] Extracted ${result.properties.length} properties, nextPage=${result.nextPageUrl ? "yes" : "no"}`);
 
+    // Step 3: Enrich images from detail pages (cheerio only, no Claude)
+    let enrichedProperties = result.properties;
+    try {
+      enrichedProperties = await enrichPropertyImages(result.properties, result.detailUrls);
+    } catch (err) {
+      console.error("[scrape] Image enrichment failed (non-fatal):", err);
+      // Continue with whatever images we already have
+    }
+
     return NextResponse.json({
-      properties: result.properties,
+      properties: enrichedProperties,
       nextPageUrl: result.nextPageUrl,
       pageNumber,
-      totalExtracted: result.properties.length,
+      totalExtracted: enrichedProperties.length,
       siteTitle: result.siteTitle,
     });
   } catch (err) {
