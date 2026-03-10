@@ -5,7 +5,8 @@
  * Each tenant uses their own Late API key.
  *
  * Late API docs: https://docs.getlate.dev
- * Base URL: https://api.getlate.dev/v1
+ * OpenAPI spec: https://docs.getlate.dev/api/openapi
+ * Base URL: https://getlate.dev/api/v1
  */
 
 import type {
@@ -15,7 +16,7 @@ import type {
   LatePostResponse,
 } from "./types";
 
-const LATE_BASE_URL = "https://api.getlate.dev/v1";
+const LATE_BASE_URL = "https://getlate.dev/api/v1";
 
 // ──────────────────────────────────────────────
 //  Helpers
@@ -92,31 +93,37 @@ export async function validateApiKey(
 /**
  * Lists all connected social media accounts for the given API key.
  * Optionally filter by platform (e.g., "instagram").
+ *
+ * Late API: GET /v1/accounts
+ * Response: { accounts: [{ _id, platform, username, displayName, ... }] }
  */
 export async function listAccounts(
   apiKey: string,
   platformFilter?: string
 ): Promise<{ accounts: LateAccount[]; error: string | null; status: number }> {
-  const { data, error, status } = await lateRequest<{ data: LateRawAccount[] }>(
+  // Late returns { accounts: [...] } wrapper
+  const { data, error, status } = await lateRequest<{ accounts: LateRawAccount[] }>(
     apiKey,
-    "/accounts/list"
+    "/accounts"
   );
 
   if (error || !data) {
     return { accounts: [], error, status };
   }
 
-  // Late returns accounts in data.data (or directly as array)
-  const rawAccounts: LateRawAccount[] = Array.isArray(data) ? data : (data.data || []);
+  // Handle both { accounts: [...] } and direct array responses
+  const rawAccounts: LateRawAccount[] = Array.isArray(data)
+    ? data
+    : (data.accounts || []);
 
   // Normalize Late API field names → our internal LateAccount shape
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let accounts: LateAccount[] = rawAccounts.map((raw: any) => ({
-    id: raw.accountId || raw.id || "",
-    platform: raw.platform,
-    username: raw.username,
-    displayName: raw.displayName || raw.username,
-    profilePictureUrl: raw.profileImage || raw.profilePictureUrl,
+    id: raw._id || raw.accountId || raw.id || "",
+    platform: raw.platform || "",
+    username: (raw.username || "").replace(/^@/, ""),
+    displayName: raw.displayName || raw.username || "",
+    profilePictureUrl: raw.profileUrl || raw.profileImage || raw.profilePictureUrl,
   }));
 
   if (platformFilter) {
@@ -146,6 +153,9 @@ export async function listInstagramAccounts(
  * Gets a presigned URL from Late, downloads the image from source,
  * and uploads it to Late's storage.
  *
+ * Late API: POST /v1/media/presign  { filename, contentType }
+ * Response: { uploadUrl, publicUrl }
+ *
  * @param apiKey - Late API key
  * @param imageUrl - Source image URL (from Supabase storage)
  * @returns The public URL on Late's storage
@@ -154,11 +164,20 @@ export async function uploadImage(
   apiKey: string,
   imageUrl: string
 ): Promise<{ publicUrl: string | null; error: string | null }> {
-  // Step 1: Get presigned URL
+  // Determine content type from URL
+  const contentType = imageUrl.endsWith(".png") ? "image/png" : "image/jpeg";
+  const ext = contentType === "image/png" ? "png" : "jpg";
+  const filename = `property-image-${Date.now()}.${ext}`;
+
+  // Step 1: Get presigned URL via POST /media/presign
   const { data: presigned, error: presignError } =
     await lateRequest<LatePresignedUrlResponse>(
       apiKey,
-      "/media/presigned-url"
+      "/media/presign",
+      {
+        method: "POST",
+        body: JSON.stringify({ filename, contentType }),
+      }
     );
 
   if (presignError || !presigned) {
@@ -180,7 +199,6 @@ export async function uploadImage(
 
   // Step 3: Upload to Late's presigned URL
   try {
-    const contentType = imageUrl.endsWith(".png") ? "image/png" : "image/jpeg";
     const uploadRes = await fetch(presigned.uploadUrl, {
       method: "PUT",
       headers: { "Content-Type": contentType },
@@ -229,6 +247,9 @@ export async function uploadImages(
 /**
  * Publishes a carousel post to Instagram via Late API.
  *
+ * Late API: POST /v1/posts
+ * Body: { content, mediaItems: [{type,url}], platforms: [{platform,accountId}], publishNow }
+ *
  * Flow:
  * 1. Upload all images to Late's storage
  * 2. Create post with media URLs
@@ -272,16 +293,16 @@ export async function publishCarousel(
     console.warn(`[late] ${uploadErrors.length} image upload(s) failed, continuing with ${publicUrls.length} images`);
   }
 
-  // Step 2: Create post
+  // Step 2: Create post via POST /v1/posts
   console.log(`[late] Creating carousel post with ${publicUrls.length} images...`);
   const { data, error } = await lateRequest<LatePostResponse>(
     apiKey,
-    "/posts/create",
+    "/posts",
     {
       method: "POST",
       body: JSON.stringify({
         content: caption,
-        mediaItems: publicUrls.map((url) => ({ url })),
+        mediaItems: publicUrls.map((url) => ({ type: "image", url })),
         platforms: [
           {
             platform: "instagram",
@@ -301,8 +322,8 @@ export async function publishCarousel(
   const instagramResult = data.platforms?.find(
     (p) => p.platform === "instagram"
   );
-  const postUrl = instagramResult?.postUrl || data.platformPostUrl;
-  const postId = instagramResult?.postId || data.id;
+  const postUrl = instagramResult?.platformPostUrl;
+  const postId = instagramResult?.platformPostId || data._id;
 
   console.log(`[late] Post created: ${postId}, URL: ${postUrl || "pending"}`);
 
