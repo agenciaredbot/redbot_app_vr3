@@ -250,10 +250,9 @@ export async function uploadImages(
  * Late API: POST /v1/posts
  * Body: { content, mediaItems: [{type,url}], platforms: [{platform,accountId}], publishNow }
  *
- * Flow:
- * 1. Upload all images to Late's storage
- * 2. Create post with media URLs
- * 3. Return post URL
+ * Late accepts publicly accessible HTTPS URLs directly in mediaItems,
+ * so we pass the Supabase Storage URLs without re-uploading.
+ * This keeps the request fast (single API call) and avoids Vercel timeouts.
  */
 export async function publishCarousel(
   apiKey: string,
@@ -278,23 +277,8 @@ export async function publishCarousel(
     return { success: false, error: "Máximo 10 imágenes por carrusel." };
   }
 
-  // Step 1: Upload images to Late
-  console.log(`[late] Uploading ${imageUrls.length} images...`);
-  const { publicUrls, errors: uploadErrors } = await uploadImages(apiKey, imageUrls);
-
-  if (publicUrls.length === 0) {
-    return {
-      success: false,
-      error: `No se pudieron subir las imágenes. ${uploadErrors[0] || ""}`,
-    };
-  }
-
-  if (uploadErrors.length > 0) {
-    console.warn(`[late] ${uploadErrors.length} image upload(s) failed, continuing with ${publicUrls.length} images`);
-  }
-
-  // Step 2: Create post via POST /v1/posts
-  console.log(`[late] Creating carousel post with ${publicUrls.length} images...`);
+  // Late accepts public HTTPS URLs directly — no need to re-upload
+  console.log(`[late] Creating carousel post with ${imageUrls.length} images (direct URLs)...`);
   const { data, error } = await lateRequest<LatePostResponse>(
     apiKey,
     "/posts",
@@ -302,7 +286,7 @@ export async function publishCarousel(
       method: "POST",
       body: JSON.stringify({
         content: caption,
-        mediaItems: publicUrls.map((url) => ({ type: "image", url })),
+        mediaItems: imageUrls.map((url) => ({ type: "image", url })),
         platforms: [
           {
             platform: "instagram",
