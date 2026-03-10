@@ -149,17 +149,30 @@ export function InstagramPublishDialog({
       .sort((a, b) => a - b)
       .map((i) => images[i]);
 
+    console.log("[ig-publish] Starting publish:", {
+      propertyId: property.id,
+      accountId: selectedAccount,
+      imageCount: imageUrls.length,
+      firstImage: imageUrls[0]?.slice(0, 80),
+    });
+
     try {
+      const requestBody = {
+        propertyId: property.id,
+        accountId: selectedAccount,
+        caption: caption.trim(),
+        imageUrls,
+      };
+
+      console.log("[ig-publish] Sending request to /api/social/publish...");
+
       const res = await fetch("/api/social/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          propertyId: property.id,
-          accountId: selectedAccount,
-          caption: caption.trim(),
-          imageUrls,
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      console.log("[ig-publish] Response received:", res.status, res.statusText);
 
       // Handle non-JSON responses (e.g. Vercel timeout, 502/504 errors)
       let data;
@@ -167,6 +180,7 @@ export function InstagramPublishDialog({
         data = await res.json();
       } catch {
         const text = await res.text().catch(() => "");
+        console.error("[ig-publish] Non-JSON response:", res.status, text.slice(0, 200));
         if (res.status === 504 || res.status === 502) {
           setErrorMsg("La publicación tardó demasiado. Puede que se haya publicado — verifica en Instagram.");
         } else {
@@ -176,8 +190,10 @@ export function InstagramPublishDialog({
         return;
       }
 
+      console.log("[ig-publish] Response data:", data);
+
       if (!res.ok) {
-        setErrorMsg(data.error || "Error al publicar.");
+        setErrorMsg(data.error || `Error al publicar (${res.status}).`);
         setState("error");
         return;
       }
@@ -185,8 +201,19 @@ export function InstagramPublishDialog({
       setPostUrl(data.postUrl || "");
       setState("success");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      setErrorMsg(`Error de conexión${msg ? `: ${msg}` : ""}. Intenta de nuevo.`);
+      // Log full error details for debugging
+      console.error("[ig-publish] Fetch error:", err);
+      console.error("[ig-publish] Error type:", typeof err, err?.constructor?.name);
+
+      let detail = "sin detalles";
+      if (err instanceof Error) {
+        detail = `${err.name}: ${err.message}`;
+      } else if (typeof err === "string") {
+        detail = err;
+      } else {
+        try { detail = JSON.stringify(err); } catch { detail = String(err); }
+      }
+      setErrorMsg(`Error de red: ${detail}`);
       setState("error");
     }
   };
