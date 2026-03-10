@@ -161,7 +161,20 @@ export function InstagramPublishDialog({
         }),
       });
 
-      const data = await res.json();
+      // Handle non-JSON responses (e.g. Vercel timeout, 502/504 errors)
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        const text = await res.text().catch(() => "");
+        if (res.status === 504 || res.status === 502) {
+          setErrorMsg("La publicación tardó demasiado. Puede que se haya publicado — verifica en Instagram.");
+        } else {
+          setErrorMsg(`Error del servidor (${res.status}). ${text.slice(0, 100)}`);
+        }
+        setState("error");
+        return;
+      }
 
       if (!res.ok) {
         setErrorMsg(data.error || "Error al publicar.");
@@ -171,8 +184,9 @@ export function InstagramPublishDialog({
 
       setPostUrl(data.postUrl || "");
       setState("success");
-    } catch {
-      setErrorMsg("Error de conexi\u00f3n. Intenta de nuevo.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setErrorMsg(`Error de conexión${msg ? `: ${msg}` : ""}. Intenta de nuevo.`);
       setState("error");
     }
   };
