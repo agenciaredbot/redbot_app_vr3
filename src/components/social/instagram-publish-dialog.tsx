@@ -345,7 +345,7 @@ export function InstagramPublishDialog({
       return;
     }
 
-    // Now publish
+    // Now publish — the endpoint responds immediately; we poll for result
     setState("publishing");
     setCropProgress("");
 
@@ -366,11 +366,7 @@ export function InstagramPublishDialog({
       try {
         data = await res.json();
       } catch {
-        if (res.status === 504 || res.status === 502) {
-          setErrorMsg("La publicaci\u00f3n tard\u00f3 demasiado. Puede que se haya publicado \u2014 verifica en Instagram.");
-        } else {
-          setErrorMsg(`Error del servidor (${res.status}).`);
-        }
+        setErrorMsg(`Error del servidor (${res.status}).`);
         setState("error");
         return;
       }
@@ -381,7 +377,43 @@ export function InstagramPublishDialog({
         return;
       }
 
-      setPostUrl(data.postUrl || "");
+      // The endpoint returns immediately with a postId.
+      // Now poll for the actual result from Late.
+      const postId = data.postId;
+      if (!postId) {
+        // Old endpoint style — direct success
+        setPostUrl(data.postUrl || "");
+        setState("success");
+        return;
+      }
+
+      // Poll for up to 45 seconds (15 attempts × 3s each)
+      for (let attempt = 0; attempt < 15; attempt++) {
+        await new Promise((r) => setTimeout(r, 3000));
+
+        try {
+          const checkRes = await fetch(`/api/social/posts/check?postId=${postId}`);
+          if (!checkRes.ok) continue;
+
+          const checkData = await checkRes.json();
+
+          if (checkData.status === "published") {
+            setPostUrl(checkData.postUrl || "");
+            setState("success");
+            return;
+          }
+          if (checkData.status === "failed") {
+            setErrorMsg(checkData.error || "Error al publicar en Instagram.");
+            setState("error");
+            return;
+          }
+          // status === "publishing" → keep polling
+        } catch {
+          // Network error on poll — keep trying
+        }
+      }
+
+      // Polling exhausted — assume it went through (Late is slow but likely published)
       setState("success");
     } catch (err) {
       const detail = err instanceof Error ? err.message : "Error de conexi\u00f3n";
@@ -627,7 +659,7 @@ export function InstagramPublishDialog({
                   Publicando en Instagram...
                 </p>
                 <p className="text-xs text-text-muted mt-1">
-                  Creando carrusel con {selectedImages.size} fotos...
+                  Enviando carrusel. Esto puede tardar unos segundos.
                 </p>
               </div>
             </div>

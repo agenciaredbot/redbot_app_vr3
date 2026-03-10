@@ -6,11 +6,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { publishCarousel } from "@/lib/social/late-client";
 import type { SocialConnection } from "@/lib/social/types";
 
-export const maxDuration = 55; // Vercel timeout — image uploads may take time
-
 /**
  * POST /api/social/publish
  * Publish a property as an Instagram carousel via Late.
+ *
+ * Returns immediately after sending the request to Late.
+ * The client should poll GET /api/social/posts/check?postId=xxx
+ * to see the final result.
  *
  * Body: { propertyId, accountId, caption, imageUrls }
  */
@@ -74,8 +76,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[social/publish] Starting publish: property=${propertyId}, account=${accountId}, images=${imageUrls.length}`);
-
     const supabase = createAdminClient();
 
     // Get active Late connection for this org
@@ -88,7 +88,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (connError || !connection) {
-      console.error("[social/publish] No connection found:", connError?.message);
       return NextResponse.json(
         { error: "No hay conexión con Late configurada. Ve a Configuración → Redes Sociales." },
         { status: 400 }
@@ -135,50 +134,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[social/publish] social_post created: ${socialPost.id}, calling Late API...`);
-
-    // Publish via Late
-    const result = await publishCarousel(conn.api_key, {
+    // Fire the Late API call — don't await it.
+    // The HTTP request will be sent immediately. Even if Vercel kills
+    // this function at the 10s timeout, the request is already in flight
+    // and Late will process it. We update the DB in the background.
+    publishCarousel(conn.api_key, {
       accountId,
       caption,
       imageUrls,
+    }).then(async (result) => {
+      try {
+        if (result.success) {
+          await supabase
+            .from("social_posts")
+            .update({
+              status: "published",
+              platform_post_id: result.postId || null,
+              platform_post_url: result.postUrl || null,
+              published_at: new Date().toISOString(),
+            })
+            .eq("id", socialPost.id);
+        } else {
+          await supabase
+            .from("social_posts")
+            .update({
+              status: "failed",
+              error_message: result.error || "Error desconocido",
+            })
+            .eq("id", socialPost.id);
+        }
+      } catch (dbErr) {
+        console.error("[social/publish] Background DB update failed:", dbErr);
+      }
+    }).catch(async (err) => {
+      console.error("[social/publish] Background Late call failed:", err);
+      try {
+        await supabase
+          .from("social_posts")
+          .update({
+            status: "failed",
+            error_message: err instanceof Error ? err.message : "Error de conexión con Late",
+          })
+          .eq("id", socialPost.id);
+      } catch {
+        // Best effort — function may be killed by now
+      }
     });
 
-    console.log(`[social/publish] Late result: success=${result.success}, postId=${result.postId}, error=${result.error}`);
-
-    // Update social_post with result
-    if (result.success) {
-      await supabase
-        .from("social_posts")
-        .update({
-          status: "published",
-          platform_post_id: result.postId || null,
-          platform_post_url: result.postUrl || null,
-          published_at: new Date().toISOString(),
-        })
-        .eq("id", socialPost.id);
-    } else {
-      await supabase
-        .from("social_posts")
-        .update({
-          status: "failed",
-          error_message: result.error || "Error desconocido",
-        })
-        .eq("id", socialPost.id);
-    }
-
-    if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || "Error al publicar en Instagram." },
-        { status: 500 }
-      );
-    }
-
+    // Respond immediately — client will poll for status
     return NextResponse.json({
       success: true,
-      postUrl: result.postUrl,
-      postId: result.postId,
-      message: "Publicado exitosamente en Instagram.",
+      postId: socialPost.id,
+      message: "Publicación enviada. Procesando...",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error interno del servidor";
