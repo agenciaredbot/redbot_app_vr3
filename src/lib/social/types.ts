@@ -6,9 +6,20 @@
  */
 
 // ──────────────────────────────────────────────
-//  Late API response types
+//  Late API response types (raw from API)
 // ──────────────────────────────────────────────
 
+/** Raw account shape returned by Late API GET /accounts/list */
+export interface LateRawAccount {
+  accountId: string;
+  platform: string;
+  username: string;
+  displayName?: string;
+  profileImage?: string;
+  status?: string;
+}
+
+/** Normalized account used throughout Redbot */
 export interface LateAccount {
   id: string;
   platform: string;

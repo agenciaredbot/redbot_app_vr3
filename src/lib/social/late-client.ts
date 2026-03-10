@@ -5,16 +5,17 @@
  * Each tenant uses their own Late API key.
  *
  * Late API docs: https://docs.getlate.dev
- * Base URL: https://getlate.dev/api/v1
+ * Base URL: https://api.getlate.dev/v1
  */
 
 import type {
   LateAccount,
+  LateRawAccount,
   LatePresignedUrlResponse,
   LatePostResponse,
 } from "./types";
 
-const LATE_BASE_URL = "https://getlate.dev/api/v1";
+const LATE_BASE_URL = "https://api.getlate.dev/v1";
 
 // ──────────────────────────────────────────────
 //  Helpers
@@ -96,9 +97,9 @@ export async function listAccounts(
   apiKey: string,
   platformFilter?: string
 ): Promise<{ accounts: LateAccount[]; error: string | null; status: number }> {
-  const { data, error, status } = await lateRequest<{ data: LateAccount[] }>(
+  const { data, error, status } = await lateRequest<{ data: LateRawAccount[] }>(
     apiKey,
-    "/accounts/list-accounts"
+    "/accounts/list"
   );
 
   if (error || !data) {
@@ -106,7 +107,17 @@ export async function listAccounts(
   }
 
   // Late returns accounts in data.data (or directly as array)
-  let accounts: LateAccount[] = Array.isArray(data) ? data : (data.data || []);
+  const rawAccounts: LateRawAccount[] = Array.isArray(data) ? data : (data.data || []);
+
+  // Normalize Late API field names → our internal LateAccount shape
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let accounts: LateAccount[] = rawAccounts.map((raw: any) => ({
+    id: raw.accountId || raw.id || "",
+    platform: raw.platform,
+    username: raw.username,
+    displayName: raw.displayName || raw.username,
+    profilePictureUrl: raw.profileImage || raw.profilePictureUrl,
+  }));
 
   if (platformFilter) {
     accounts = accounts.filter(
@@ -265,12 +276,12 @@ export async function publishCarousel(
   console.log(`[late] Creating carousel post with ${publicUrls.length} images...`);
   const { data, error } = await lateRequest<LatePostResponse>(
     apiKey,
-    "/posts",
+    "/posts/create",
     {
       method: "POST",
       body: JSON.stringify({
         content: caption,
-        media: publicUrls.map((url) => ({ url })),
+        mediaItems: publicUrls.map((url) => ({ url })),
         platforms: [
           {
             platform: "instagram",
