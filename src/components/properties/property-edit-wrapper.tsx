@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { PropertyForm } from "./property-form";
 import { ImageUpload } from "./image-upload";
 import { PropertyPortals } from "@/components/portals/property-portals";
+import { InstagramPublishDialog } from "@/components/social/instagram-publish-dialog";
 import { GlassCard } from "@/components/ui/glass-card";
 import { getI18nText } from "@/lib/utils/format";
 import type { Property } from "@/lib/supabase/types";
@@ -63,6 +64,7 @@ export function PropertyEditWrapper({ property, orgSlug }: PropertyEditWrapperPr
   const [images, setImages] = useState<string[]>(
     (property.images as string[]) || []
   );
+  const [igDialogOpen, setIgDialogOpen] = useState(false);
 
   const title = getI18nText(property.title);
   const propertySlug = property.slug;
@@ -110,6 +112,44 @@ export function PropertyEditWrapper({ property, orgSlug }: PropertyEditWrapperPr
         onImagesChange={setImages}
       />
       <PropertyPortals propertyId={property.id} />
+
+      {/* Instagram publishing */}
+      {isPublished && images.length > 0 && (
+        <GlassCard>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-accent-pink" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <rect x="2" y="2" width="20" height="20" rx="5" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
+              <h3 className="text-sm font-semibold text-text-primary">
+                Instagram
+              </h3>
+            </div>
+            <button
+              onClick={() => setIgDialogOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-accent-pink/10 to-accent-purple/10 text-accent-pink border border-accent-pink/20 hover:from-accent-pink/20 hover:to-accent-purple/20 text-sm font-medium transition-all"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <rect x="2" y="2" width="20" height="20" rx="5" />
+                <circle cx="12" cy="12" r="5" />
+              </svg>
+              Publicar en Instagram
+            </button>
+          </div>
+          <p className="text-[11px] text-text-muted mt-2">
+            Publica esta propiedad como un carrusel de fotos en tu cuenta de Instagram.
+          </p>
+        </GlassCard>
+      )}
+
+      <InstagramPublishDialog
+        property={property}
+        orgSlug={orgSlug}
+        open={igDialogOpen}
+        onClose={() => setIgDialogOpen(false)}
+      />
     </div>
   );
 }

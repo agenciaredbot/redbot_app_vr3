@@ -6,6 +6,7 @@ import { GlassInput, GlassTextarea } from "@/components/ui/glass-input";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { LogoUpload } from "./logo-upload";
 import { TenantLinksBlock } from "@/components/ui/tenant-links-block";
+import { SocialSettingsSection } from "@/components/social/social-settings-section";
 
 interface Organization {
   id: string;
@@ -436,7 +437,10 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
         </div>
       </GlassCard>
 
-      {/* Section 4: Plan & Limits (read-only) */}
+      {/* Section 5: Social Publishing */}
+      <SocialSettingsSection canEdit={canEdit} />
+
+      {/* Section 6: Plan & Limits (read-only) */}
       <GlassCard>
         <h2 className="text-lg font-semibold text-text-primary mb-4">
           Plan y límites

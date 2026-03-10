@@ -103,4 +103,6 @@ export const RATE_LIMITS = {
   webhook: { prefix: "webhook", maxRequests: 200, windowSeconds: 60 },
   /** Web scrape: 10 page requests per minute per IP */
   scrape: { prefix: "scrape", maxRequests: 10, windowSeconds: 60 },
+  /** Social publish: 10 posts per minute per IP */
+  socialPublish: { prefix: "social-publish", maxRequests: 10, windowSeconds: 60 },
 } as const;

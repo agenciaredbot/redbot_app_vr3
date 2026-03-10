@@ -22,6 +22,7 @@ export interface PlanDefinition {
     whatsappChannel: boolean;
     portalSyndication: boolean;
     opportunitiesNetwork: boolean;
+    socialPublishing: boolean;
   };
 }
 
@@ -44,6 +45,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       whatsappChannel: false,
       portalSyndication: false,
       opportunitiesNetwork: false,
+      socialPublishing: false,
     },
   },
   power: {
@@ -64,6 +66,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       whatsappChannel: true,
       portalSyndication: true,
       opportunitiesNetwork: true,
+      socialPublishing: true,
     },
   },
   omni: {
@@ -84,6 +87,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       whatsappChannel: true,
       portalSyndication: true,
       opportunitiesNetwork: true,
+      socialPublishing: true,
     },
   },
 };
