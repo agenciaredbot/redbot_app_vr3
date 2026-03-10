@@ -15,6 +15,43 @@ interface InstagramPublishDialogProps {
 
 type PublishState = "form" | "publishing" | "success" | "error";
 
+/** Instagram carousel aspect ratio limits */
+const IG_MIN_RATIO = 0.75; // 4:5 portrait
+const IG_MAX_RATIO = 1.91; // ~2:1 landscape
+
+interface ImageMeta {
+  url: string;
+  width: number;
+  height: number;
+  ratio: number;
+  valid: boolean;
+  loading: boolean;
+}
+
+/**
+ * Loads image dimensions via the browser Image API.
+ */
+function loadImageMeta(url: string): Promise<Omit<ImageMeta, "loading">> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      resolve({
+        url,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        ratio,
+        valid: ratio >= IG_MIN_RATIO && ratio <= IG_MAX_RATIO,
+      });
+    };
+    img.onerror = () => {
+      // If we can't load, assume valid (server will catch it)
+      resolve({ url, width: 0, height: 0, ratio: 1, valid: true });
+    };
+    img.src = url;
+  });
+}
+
 /**
  * Generates a default Instagram caption from property data.
  */
@@ -76,13 +113,29 @@ export function InstagramPublishDialog({
   const [noConnection, setNoConnection] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [postUrl, setPostUrl] = useState("");
+  const [imageMetas, setImageMetas] = useState<ImageMeta[]>([]);
 
   const images = useMemo(
     () => (property.images as string[]) || [],
     [property.images]
   );
 
-  // Load accounts + generate caption
+  // Count how many images have valid aspect ratios
+  const validImageCount = useMemo(
+    () => imageMetas.filter((m) => m.valid && !m.loading).length,
+    [imageMetas]
+  );
+
+  // Count invalid selected images
+  const invalidSelectedCount = useMemo(() => {
+    let count = 0;
+    selectedImages.forEach((i) => {
+      if (imageMetas[i] && !imageMetas[i].valid) count++;
+    });
+    return count;
+  }, [selectedImages, imageMetas]);
+
+  // Load accounts + generate caption + check image dimensions
   useEffect(() => {
     if (!open) return;
 
@@ -92,12 +145,30 @@ export function InstagramPublishDialog({
     setPostUrl("");
     setCaption(generateDefaultCaption(property));
 
-    // Select first 10 images by default
-    const initialSelection = new Set<number>();
-    images.forEach((_, i) => {
-      if (i < 10) initialSelection.add(i);
+    // Initialize image metas as loading
+    const initialMetas: ImageMeta[] = images.map((url) => ({
+      url,
+      width: 0,
+      height: 0,
+      ratio: 1,
+      valid: true,
+      loading: true,
+    }));
+    setImageMetas(initialMetas);
+
+    // Load image dimensions and select only valid ones
+    Promise.all(images.map(loadImageMeta)).then((metas) => {
+      setImageMetas(metas.map((m) => ({ ...m, loading: false })));
+
+      // Select first up to 10 VALID images by default
+      const initialSelection = new Set<number>();
+      metas.forEach((meta, i) => {
+        if (meta.valid && initialSelection.size < 10) {
+          initialSelection.add(i);
+        }
+      });
+      setSelectedImages(initialSelection);
     });
-    setSelectedImages(initialSelection);
 
     // Fetch accounts
     setLoadingAccounts(true);
@@ -133,6 +204,21 @@ export function InstagramPublishDialog({
       setErrorMsg("Selecciona al menos una imagen.");
       return;
     }
+
+    // Check for invalid aspect ratios in selection
+    const invalidIndices: number[] = [];
+    selectedImages.forEach((i) => {
+      if (imageMetas[i] && !imageMetas[i].valid) {
+        invalidIndices.push(i + 1); // 1-indexed for user display
+      }
+    });
+    if (invalidIndices.length > 0) {
+      setErrorMsg(
+        `Las fotos ${invalidIndices.join(", ")} no cumplen el formato de Instagram (ratio 4:5 a 1.91:1). Deselecciónalas para continuar.`
+      );
+      return;
+    }
+
     if (!caption.trim()) {
       setErrorMsg("Escribe un caption para el post.");
       return;
@@ -149,48 +235,31 @@ export function InstagramPublishDialog({
       .sort((a, b) => a - b)
       .map((i) => images[i]);
 
-    console.log("[ig-publish] Starting publish:", {
-      propertyId: property.id,
-      accountId: selectedAccount,
-      imageCount: imageUrls.length,
-      firstImage: imageUrls[0]?.slice(0, 80),
-    });
-
     try {
-      const requestBody = {
-        propertyId: property.id,
-        accountId: selectedAccount,
-        caption: caption.trim(),
-        imageUrls,
-      };
-
-      console.log("[ig-publish] Sending request to /api/social/publish...");
-
       const res = await fetch("/api/social/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          propertyId: property.id,
+          accountId: selectedAccount,
+          caption: caption.trim(),
+          imageUrls,
+        }),
       });
-
-      console.log("[ig-publish] Response received:", res.status, res.statusText);
 
       // Handle non-JSON responses (e.g. Vercel timeout, 502/504 errors)
       let data;
       try {
         data = await res.json();
       } catch {
-        const text = await res.text().catch(() => "");
-        console.error("[ig-publish] Non-JSON response:", res.status, text.slice(0, 200));
         if (res.status === 504 || res.status === 502) {
           setErrorMsg("La publicación tardó demasiado. Puede que se haya publicado — verifica en Instagram.");
         } else {
-          setErrorMsg(`Error del servidor (${res.status}). ${text.slice(0, 100)}`);
+          setErrorMsg(`Error del servidor (${res.status}).`);
         }
         setState("error");
         return;
       }
-
-      console.log("[ig-publish] Response data:", data);
 
       if (!res.ok) {
         setErrorMsg(data.error || `Error al publicar (${res.status}).`);
@@ -201,18 +270,7 @@ export function InstagramPublishDialog({
       setPostUrl(data.postUrl || "");
       setState("success");
     } catch (err) {
-      // Log full error details for debugging
-      console.error("[ig-publish] Fetch error:", err);
-      console.error("[ig-publish] Error type:", typeof err, err?.constructor?.name);
-
-      let detail = "sin detalles";
-      if (err instanceof Error) {
-        detail = `${err.name}: ${err.message}`;
-      } else if (typeof err === "string") {
-        detail = err;
-      } else {
-        try { detail = JSON.stringify(err); } catch { detail = String(err); }
-      }
+      const detail = err instanceof Error ? err.message : "Error de conexión";
       setErrorMsg(`Error de red: ${detail}`);
       setState("error");
     }
@@ -283,39 +341,77 @@ export function InstagramPublishDialog({
               {/* Image selector */}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Selecciona las fotos ({selectedImages.size} de {Math.min(images.length, 10)})
+                  Selecciona las fotos ({selectedImages.size} de {Math.min(validImageCount || images.length, 10)})
                 </label>
                 {images.length === 0 ? (
                   <p className="text-xs text-text-muted">
                     Esta propiedad no tiene im\u00e1genes.
                   </p>
                 ) : (
-                  <div className="grid grid-cols-5 gap-2">
-                    {images.slice(0, 10).map((img, i) => (
-                      <button
-                        key={i}
-                        onClick={() => toggleImage(i)}
-                        className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                          selectedImages.has(i)
-                            ? "border-accent-blue ring-2 ring-accent-blue/30"
-                            : "border-border-glass hover:border-border-glass-hover"
-                        }`}
-                      >
-                        <img
-                          src={img}
-                          alt={`Foto ${i + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        {selectedImages.has(i) && (
-                          <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-blue flex items-center justify-center">
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-5 gap-2">
+                      {images.slice(0, 20).map((img, i) => {
+                        const meta = imageMetas[i];
+                        const isInvalid = meta && !meta.loading && !meta.valid;
+                        const isSelected = selectedImages.has(i);
+
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => !isInvalid && toggleImage(i)}
+                            title={
+                              isInvalid
+                                ? `Formato no compatible (${meta.width}\u00d7${meta.height}, ratio ${meta.ratio.toFixed(2)}). Instagram requiere entre 4:5 y 1.91:1.`
+                                : `Foto ${i + 1}`
+                            }
+                            className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                              isInvalid
+                                ? "border-accent-red/60 opacity-50 cursor-not-allowed"
+                                : isSelected
+                                  ? "border-accent-blue ring-2 ring-accent-blue/30"
+                                  : "border-border-glass hover:border-border-glass-hover"
+                            }`}
+                          >
+                            <img
+                              src={img}
+                              alt={`Foto ${i + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {/* Selected badge */}
+                            {isSelected && !isInvalid && (
+                              <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-blue flex items-center justify-center">
+                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                            )}
+                            {/* Invalid aspect ratio badge */}
+                            {isInvalid && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                <div className="w-6 h-6 rounded-full bg-accent-red/90 flex items-center justify-center">
+                                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M12 2L2 20h20L12 2z" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Warning about invalid images */}
+                    {imageMetas.some((m) => !m.loading && !m.valid) && (
+                      <p className="text-[11px] text-amber-400 mt-2 flex items-start gap-1.5">
+                        <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M12 2L2 20h20L12 2z" />
+                        </svg>
+                        <span>
+                          Fotos marcadas tienen formato vertical (Stories/TikTok) y no son compatibles con carruseles de Instagram.
+                          Se requiere ratio entre 4:5 y 1.91:1.
+                        </span>
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -378,7 +474,7 @@ export function InstagramPublishDialog({
                 </button>
                 <button
                   onClick={handlePublish}
-                  disabled={selectedImages.size === 0 || !caption.trim()}
+                  disabled={selectedImages.size === 0 || !caption.trim() || invalidSelectedCount > 0}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-accent-pink to-accent-purple text-white text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -403,7 +499,7 @@ export function InstagramPublishDialog({
                   Publicando en Instagram...
                 </p>
                 <p className="text-xs text-text-muted mt-1">
-                  Subiendo {selectedImages.size} im\u00e1genes y creando el carrusel.
+                  Creando carrusel con {selectedImages.size} fotos...
                 </p>
               </div>
             </div>
