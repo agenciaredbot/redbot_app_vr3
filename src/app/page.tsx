@@ -974,6 +974,95 @@ export default function HomePage() {
       {/* ── PRICING (Client Component with toggle) ── */}
       <PricingSection />
 
+      {/* ── DIAGNÓSTICO DE AUTOMATIZACIÓN ── */}
+      <section id="diagnostico" className="py-20 md:py-28 px-6 border-t border-border-glass">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-bg-glass backdrop-blur-xl border border-border-glass rounded-3xl p-8 md:p-12 text-center relative overflow-hidden">
+            {/* Subtle glow */}
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-accent-indigo/10 rounded-full blur-[100px]" />
+            <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-accent-red/10 rounded-full blur-[100px]" />
+
+            <div className="relative">
+              <SectionBadge text="Diagnóstico Gratuito" />
+              <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
+                ¿No sabes qué plan necesita{" "}
+                <span className="bg-gradient-to-r from-accent-red to-accent-indigo bg-clip-text text-transparent">
+                  tu inmobiliaria?
+                </span>
+              </h2>
+              <p className="mt-4 text-lg text-text-secondary max-w-xl mx-auto">
+                Responde 8 preguntas rápidas y recibe una recomendación
+                personalizada basada en el tamaño y necesidades de tu negocio.
+              </p>
+
+              <div className="mt-10 grid sm:grid-cols-2 gap-4 max-w-lg mx-auto text-left">
+                {[
+                  {
+                    icon: icons.chart,
+                    label: "Escala de tu negocio",
+                    accent: "text-accent-blue bg-accent-blue/10",
+                  },
+                  {
+                    icon: icons.globe,
+                    label: "Nivel de digitalización",
+                    accent: "text-accent-purple bg-accent-purple/10",
+                  },
+                  {
+                    icon: icons.whatsapp,
+                    label: "Canales de comunicación",
+                    accent: "text-accent-green bg-accent-green/10",
+                  },
+                  {
+                    icon: icons.ai,
+                    label: "Complejidad operativa",
+                    accent: "text-accent-cyan bg-accent-cyan/10",
+                  },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${item.accent}`}
+                    >
+                      {item.icon}
+                    </div>
+                    <span className="text-sm text-text-secondary">
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-10">
+                <a
+                  href="https://solti-v2.vercel.app/f/redbot-automatizacion-de-inmobiliarias-vr2"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-8 py-4 text-base font-semibold rounded-2xl bg-gradient-to-r from-accent-red to-accent-indigo text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-red/20"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"
+                    />
+                  </svg>
+                  Hacer diagnóstico gratuito
+                </a>
+              </div>
+
+              <p className="mt-4 text-xs text-text-muted">
+                Solo toma 2 minutos · 100% gratuito · Sin registro
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── BENEFITS — Socio de transformación ── */}
       <section className="py-20 md:py-28 px-6 border-t border-border-glass">
         <div className="max-w-4xl mx-auto">
