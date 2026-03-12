@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
+const isDev = process.env.NODE_ENV === "development";
 import { PLANS } from "@/config/plans";
 import type { PlanTier } from "@/lib/supabase/types";
 
@@ -60,6 +63,27 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
   const [isActive, setIsActive] = useState(true);
   const [trialEndsAt, setTrialEndsAt] = useState("");
   const [quickActionLoading, setQuickActionLoading] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
+
+  const handleImpersonate = async () => {
+    setImpersonating(true);
+    try {
+      const res = await fetch("/api/super-admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId: orgId }),
+      });
+      if (res.ok) {
+        const { slug } = await res.json();
+        const target = isDev
+          ? `/admin?slug=${slug}`
+          : `https://${slug}.${rootDomain}/admin`;
+        window.location.href = target;
+      }
+    } catch {
+      setImpersonating(false);
+    }
+  };
 
   const fetchOrg = useCallback(async () => {
     setLoading(true);
@@ -246,6 +270,13 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
         </Link>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-text-primary">{org.name as string}</h1>
+          <button
+            onClick={handleImpersonate}
+            disabled={impersonating}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-orange/10 text-accent-orange border border-accent-orange/25 hover:bg-accent-orange/20 transition-colors disabled:opacity-50"
+          >
+            {impersonating ? "Abriendo..." : "Gestionar como admin"}
+          </button>
           {!isActive && (
             <span className="px-2 py-0.5 text-xs rounded-full bg-accent-red/15 text-accent-red border border-accent-red/30">
               Inactiva

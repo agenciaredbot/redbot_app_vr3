@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -6,7 +7,9 @@ import { AdminHeader } from "@/components/layout/admin-header";
 import { GradientBackground } from "@/components/ui/gradient-background";
 import { StoreHydrator } from "@/components/providers/store-hydrator";
 import { SubscriptionBlockedScreen } from "@/components/billing/subscription-blocked-screen";
+import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 import { PLANS } from "@/config/plans";
+import { IMPERSONATION_COOKIE_NAME } from "@/lib/auth/impersonation";
 import type { Organization, UserProfile, PlanTier } from "@/lib/supabase/types";
 
 const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
@@ -35,10 +38,28 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
+  // --- Impersonation: super_admin can manage any org ---
+  const isSuperAdmin = profile.role === "super_admin";
+  let isImpersonating = false;
+  let targetOrgId = profile.organization_id;
+
+  if (isSuperAdmin) {
+    const cookieStore = await cookies();
+    const impCookie = cookieStore.get(IMPERSONATION_COOKIE_NAME);
+    if (impCookie?.value) {
+      targetOrgId = impCookie.value;
+      isImpersonating = true;
+    }
+  }
+
+  if (!targetOrgId) {
+    redirect("/login");
+  }
+
   const { data: org } = await supabase
     .from("organizations")
     .select("*")
-    .eq("id", profile.organization_id)
+    .eq("id", targetOrgId)
     .single();
 
   if (!org) {
@@ -47,20 +68,22 @@ export default async function AdminLayout({
 
   // Guard: if user is on a tenant subdomain that doesn't match their org,
   // redirect them to their correct subdomain admin panel.
+  // Skip this guard when super_admin is impersonating.
   const headersList = await headers();
   const subdomainSlug = headersList.get("x-organization-slug");
 
-  if (subdomainSlug && subdomainSlug !== org.slug) {
+  if (subdomainSlug && subdomainSlug !== org.slug && !isImpersonating) {
     redirect(`https://${org.slug}.${rootDomain}/admin`);
   }
 
   // ============================================================
   // Subscription status check — block access for expired/unpaid orgs
+  // Skip when super_admin is impersonating.
   // ============================================================
   const pathname = headersList.get("x-pathname") || "";
   const isBillingPage = pathname.includes("/admin/billing");
 
-  if (!isBillingPage) {
+  if (!isBillingPage && !isImpersonating) {
     const blockedStatuses = ["unpaid", "canceled"];
     const isStatusBlocked = blockedStatuses.includes(org.plan_status);
     const isExpiredTrial =
@@ -104,14 +127,19 @@ export default async function AdminLayout({
         user={profile as UserProfile}
         organization={org as Organization}
       />
+      {isImpersonating && (
+        <ImpersonationBanner orgName={org.name || "Organización"} />
+      )}
       <AdminSidebar orgName={org.name || "Mi Empresa"} />
       <div className="ml-64">
         <AdminHeader
           userName={profile.full_name}
           userEmail={profile.email}
-          isSuperAdmin={profile.role === "super_admin"}
+          isSuperAdmin={isSuperAdmin}
         />
-        <main className="p-6">{children}</main>
+        <main className={`p-6 ${isImpersonating ? "mt-10" : ""}`}>
+          {children}
+        </main>
       </div>
     </div>
   );

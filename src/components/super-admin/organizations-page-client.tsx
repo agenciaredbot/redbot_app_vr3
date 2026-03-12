@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
+const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
+const isDev = process.env.NODE_ENV === "development";
+
 interface Organization {
   id: string;
   name: string;
@@ -49,6 +52,27 @@ export function OrganizationsPageClient() {
   const [search, setSearch] = useState("");
   const [planTier, setPlanTier] = useState("");
   const [planStatus, setPlanStatus] = useState("");
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+
+  const handleImpersonate = async (org: Organization, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImpersonatingId(org.id);
+    try {
+      const res = await fetch("/api/super-admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId: org.id }),
+      });
+      if (res.ok) {
+        const target = isDev
+          ? `/admin?slug=${org.slug}`
+          : `https://${org.slug}.${rootDomain}/admin`;
+        window.location.href = target;
+      }
+    } catch {
+      setImpersonatingId(null);
+    }
+  };
 
   const fetchOrgs = useCallback(async () => {
     setLoading(true);
@@ -143,18 +167,19 @@ export function OrganizationsPageClient() {
                 <th className="text-center px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Props</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Leads</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Creado</th>
+                <th className="text-center px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-text-muted">
+                  <td colSpan={9} className="px-4 py-12 text-center text-text-muted">
                     Cargando...
                   </td>
                 </tr>
               ) : organizations.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-text-muted">
+                  <td colSpan={9} className="px-4 py-12 text-center text-text-muted">
                     No se encontraron organizaciones
                   </td>
                 </tr>
@@ -191,6 +216,15 @@ export function OrganizationsPageClient() {
                     <td className="px-4 py-3 text-sm text-text-secondary text-center">{org._leadCount}</td>
                     <td className="px-4 py-3 text-sm text-text-muted">
                       {new Date(org.created_at).toLocaleDateString("es-CO")}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={(e) => handleImpersonate(org, e)}
+                        disabled={impersonatingId === org.id}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-orange/10 text-accent-orange border border-accent-orange/25 hover:bg-accent-orange/20 transition-colors disabled:opacity-50"
+                      >
+                        {impersonatingId === org.id ? "Abriendo..." : "Gestionar"}
+                      </button>
                     </td>
                   </tr>
                 ))
