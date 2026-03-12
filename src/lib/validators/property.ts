@@ -34,6 +34,7 @@ export const propertyFormSchema = z.object({
   owner_email: z.string().email("Email inválido").optional().or(z.literal("")),
   commission_value: z.coerce.number().min(0).max(100).optional(),
   commission_type: z.string().optional(),
+  video_url: z.string().url("URL inválida").optional().or(z.literal("")),
 });
 
 // Use z.input for form input type (before coercion) — compatible with useForm + zodResolver

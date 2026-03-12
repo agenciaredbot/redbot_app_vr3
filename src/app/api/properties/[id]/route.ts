@@ -76,6 +76,7 @@ export async function PUT(
   if (body.owner_email !== undefined) update.owner_email = body.owner_email;
   if (body.commission_value !== undefined) update.commission_value = body.commission_value;
   if (body.commission_type !== undefined) update.commission_type = body.commission_type;
+  if (body.video_url !== undefined) update.video_url = body.video_url || null;
 
   const { data, error } = await supabase
     .from("properties")

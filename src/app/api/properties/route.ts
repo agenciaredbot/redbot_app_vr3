@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
       owner_email: body.owner_email || null,
       commission_value: body.commission_value || null,
       commission_type: body.commission_type || "percent",
+      video_url: body.video_url || null,
     })
     .select()
     .single();

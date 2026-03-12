@@ -71,6 +71,7 @@ export function PropertyForm({ property }: PropertyFormProps) {
           owner_email: property.owner_email || "",
           commission_value: property.commission_value || undefined,
           commission_type: property.commission_type,
+          video_url: property.video_url || "",
         }
       : {
           currency: "COP",
@@ -259,6 +260,20 @@ export function PropertyForm({ property }: PropertyFormProps) {
             {...register("features")}
           />
         </div>
+      </GlassCard>
+
+      {/* Video */}
+      <GlassCard>
+        <h2 className="text-lg font-semibold text-text-primary mb-4">
+          Video
+        </h2>
+        <GlassInput
+          label="Video de YouTube"
+          placeholder="https://www.youtube.com/watch?v=..."
+          helperText="Pega el link del video de YouTube de esta propiedad"
+          error={errors.video_url?.message}
+          {...register("video_url")}
+        />
       </GlassCard>
 
       {/* Status */}

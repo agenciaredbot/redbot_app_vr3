@@ -120,6 +120,24 @@ export function PropertyDetail({ property }: PropertyDetailProps) {
               </div>
             </GlassCard>
           )}
+          {/* YouTube Video Button */}
+          {property.video_url && (
+            <a
+              href={property.video_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-3 w-full px-6 py-4 bg-[#FF0000] hover:bg-[#CC0000] transition-colors rounded-2xl text-white font-semibold text-lg shadow-lg"
+            >
+              <svg
+                viewBox="0 0 28 20"
+                fill="currentColor"
+                className="w-8 h-8 flex-shrink-0"
+              >
+                <path d="M27.4 3.1c-.3-1.2-1.2-2.1-2.4-2.4C22.8 0 14 0 14 0S5.2 0 3 .7C1.8 1 .9 1.9.6 3.1 0 5.3 0 10 0 10s0 4.7.6 6.9c.3 1.2 1.2 2.1 2.4 2.4C5.2 20 14 20 14 20s8.8 0 11-.7c1.2-.3 2.1-1.2 2.4-2.4.6-2.2.6-6.9.6-6.9s0-4.7-.6-6.9zM11.2 14.3V5.7L18.5 10l-7.3 4.3z" />
+              </svg>
+              Ver el video de esta propiedad
+            </a>
+          )}
         </div>
 
         {/* Sidebar — pricing */}
