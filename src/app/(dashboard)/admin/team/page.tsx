@@ -1,23 +1,8 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/auth/get-admin-context";
 import { TeamPageClient } from "@/components/team/team-page-client";
 
 export default async function TeamPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("organization_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.organization_id) redirect("/login");
+  const { supabase, profile, organizationId } = await getAdminContext();
 
   const canManageTeam = ["super_admin", "org_admin"].includes(profile.role);
 
@@ -25,7 +10,7 @@ export default async function TeamPage() {
   const { data: members } = await supabase
     .from("user_profiles")
     .select("id, full_name, email, role, is_active, created_at")
-    .eq("organization_id", profile.organization_id)
+    .eq("organization_id", organizationId)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 
@@ -33,7 +18,7 @@ export default async function TeamPage() {
   const { data: pendingInvitations } = await supabase
     .from("invitations")
     .select("id, token, role, expires_at, created_at")
-    .eq("organization_id", profile.organization_id)
+    .eq("organization_id", organizationId)
     .eq("status", "pending")
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false });
@@ -42,7 +27,7 @@ export default async function TeamPage() {
   const { data: org } = await supabase
     .from("organizations")
     .select("max_agents")
-    .eq("id", profile.organization_id)
+    .eq("id", organizationId)
     .single();
 
   const maxAgents = org?.max_agents ?? 2;
@@ -63,7 +48,7 @@ export default async function TeamPage() {
           current: members?.length ?? 0,
           max: maxAgents,
         }}
-        currentUserId={user.id}
+        currentUserId={profile.id}
         canManageTeam={canManageTeam}
       />
     </div>

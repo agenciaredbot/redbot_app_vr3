@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/auth/get-admin-context";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassButton } from "@/components/ui/glass-button";
 import { PropertyActionsBar } from "@/components/properties/property-actions-bar";
@@ -17,28 +16,8 @@ export default async function PropertiesPage({
   searchParams: Promise<{ page?: string; search?: string }>;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
+  const { supabase, profile, organizationId } = await getAdminContext();
 
-  // Get authenticated user + org context
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("organization_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.organization_id) {
-    redirect("/login");
-  }
-
-  const organizationId = profile.organization_id;
   const canBulkAction = ["super_admin", "org_admin"].includes(profile.role);
 
   const page = parseInt(params.page || "1");

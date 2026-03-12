@@ -1,5 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { getAdminContext } from "@/lib/auth/get-admin-context";
 import { PropertyEditWrapper } from "@/components/properties/property-edit-wrapper";
 
 export const metadata = {
@@ -15,39 +15,20 @@ export default async function EditPropertyPage({
 }) {
   const { id } = await params;
   const { new: isNew } = await searchParams;
-  const supabase = await createClient();
-
-  // Get authenticated user + org context
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.organization_id) {
-    redirect("/login");
-  }
+  const { supabase, organizationId } = await getAdminContext();
 
   // Get org slug for property links
   const { data: org } = await supabase
     .from("organizations")
     .select("slug")
-    .eq("id", profile.organization_id)
+    .eq("id", organizationId)
     .single();
 
   const { data: property } = await supabase
     .from("properties")
     .select("*")
     .eq("id", id)
-    .eq("organization_id", profile.organization_id)
+    .eq("organization_id", organizationId)
     .single();
 
   if (!property) {

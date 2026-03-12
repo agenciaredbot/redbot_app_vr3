@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/auth/get-admin-context";
 import { GlassCard } from "@/components/ui/glass-card";
 
 export const metadata = {
@@ -7,28 +6,7 @@ export const metadata = {
 };
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  // Get authenticated user + org context
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.organization_id) {
-    redirect("/login");
-  }
-
-  const organizationId = profile.organization_id;
+  const { supabase, organizationId } = await getAdminContext();
 
   // Fetch stats scoped to this organization
   const { count: propertiesCount } = await supabase
