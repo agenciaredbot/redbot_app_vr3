@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
-const isDev = process.env.NODE_ENV === "development";
 import { PLANS } from "@/config/plans";
 import type { PlanTier } from "@/lib/supabase/types";
 
@@ -75,9 +73,7 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
       });
       if (res.ok) {
         const { slug } = await res.json();
-        const target = isDev
-          ? `/admin?slug=${slug}`
-          : `https://${slug}.${rootDomain}/admin`;
+        const target = `/admin?slug=${slug}`;
         window.location.href = target;
       }
     } catch {

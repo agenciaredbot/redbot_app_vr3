@@ -50,8 +50,10 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Also support ?slug= query param for dev environments without wildcard DNS
-  if (!subdomain && process.env.NODE_ENV === "development") {
+  // Support ?slug= query param for:
+  // - Dev environments without wildcard DNS
+  // - Super admin impersonation in production (stays on root domain)
+  if (!subdomain) {
     const slugParam = request.nextUrl.searchParams.get("slug");
     if (slugParam) {
       subdomain = slugParam;

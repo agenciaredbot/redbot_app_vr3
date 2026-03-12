@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "redbot.app";
-const isDev = process.env.NODE_ENV === "development";
+// Impersonation always uses ?slug= to stay on the same domain (avoids cross-subdomain cookie issues)
 
 interface Organization {
   id: string;
@@ -64,10 +63,7 @@ export function OrganizationsPageClient() {
         body: JSON.stringify({ organizationId: org.id }),
       });
       if (res.ok) {
-        const target = isDev
-          ? `/admin?slug=${org.slug}`
-          : `https://${org.slug}.${rootDomain}/admin`;
-        window.location.href = target;
+        window.location.href = `/admin?slug=${org.slug}`;
       }
     } catch {
       setImpersonatingId(null);
