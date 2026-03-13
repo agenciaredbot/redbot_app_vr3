@@ -1310,6 +1310,12 @@ export default function LandingMarketingPage() {
               >
                 Programa de afiliados
               </Link>
+              <Link
+                href="/privacidad"
+                className="hover:text-text-primary transition-colors"
+              >
+                Política de privacidad
+              </Link>
             </div>
           </div>
         </div>
