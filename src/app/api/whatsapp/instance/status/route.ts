@@ -47,8 +47,10 @@ export async function GET() {
       updates.connection_status = "connected";
       updates.connected_at = new Date().toISOString();
       updates.disconnected_at = null;
+    }
 
-      // Try to fetch the connected phone number
+    // Fetch phone number if connected but missing from DB
+    if (state.state === "open" && !instance.connected_phone) {
       try {
         const info = await fetchInstanceInfo(instance.instance_name);
         if (info.ownerJid) {
@@ -59,7 +61,9 @@ export async function GET() {
       } catch (phoneErr) {
         console.warn("[whatsapp-status] Could not fetch phone number:", phoneErr);
       }
-    } else if (state.state === "close" && instance.connection_status === "connected") {
+    }
+
+    if (state.state === "close" && instance.connection_status === "connected") {
       dbStatus = "disconnected";
       updates.connection_status = "disconnected";
       updates.disconnected_at = new Date().toISOString();
