@@ -60,7 +60,7 @@ export function PropertyPagination({
         <button
           onClick={() => goToPage(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="px-3 py-2 rounded-lg text-sm font-medium transition-all
+          className="cursor-pointer px-3 py-2 rounded-lg text-sm font-medium transition-all
             disabled:opacity-30 disabled:cursor-not-allowed
             text-text-secondary hover:text-text-primary
             hover:bg-white/[0.06] active:bg-white/[0.1]"
@@ -78,7 +78,7 @@ export function PropertyPagination({
             <button
               key={p}
               onClick={() => goToPage(p)}
-              className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${
+              className={`cursor-pointer w-10 h-10 rounded-lg text-sm font-medium transition-all ${
                 p === currentPage
                   ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white shadow-lg shadow-accent-blue/25"
                   : "text-text-secondary hover:text-text-primary hover:bg-white/[0.06]"
@@ -93,7 +93,7 @@ export function PropertyPagination({
         <button
           onClick={() => goToPage(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          className="px-3 py-2 rounded-lg text-sm font-medium transition-all
+          className="cursor-pointer px-3 py-2 rounded-lg text-sm font-medium transition-all
             disabled:opacity-30 disabled:cursor-not-allowed
             text-text-secondary hover:text-text-primary
             hover:bg-white/[0.06] active:bg-white/[0.1]"
