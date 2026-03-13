@@ -39,6 +39,18 @@ export function WhatsAppChannelClient() {
       const data = await res.json();
 
       if (data.instance) {
+        // If connected but phone missing, call /status to trigger phone fetch
+        if (data.instance.connection_status === "connected" && !data.instance.connected_phone) {
+          try {
+            const statusRes = await fetch("/api/whatsapp/instance/status");
+            const statusData = await statusRes.json();
+            if (statusData.instance) {
+              setInstance(statusData.instance);
+              setViewState("connected");
+              return;
+            }
+          } catch {}
+        }
         setInstance(data.instance);
         switch (data.instance.connection_status) {
           case "connected":
