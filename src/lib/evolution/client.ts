@@ -242,13 +242,32 @@ export async function fetchInstanceInfo(
   try {
     const data = await evoRequestRaw(`/instance/fetchInstances?instanceName=${instanceName}`);
 
+    console.log(`[evolution] fetchInstanceInfo raw response:`, JSON.stringify(data).slice(0, 600));
+
     // Response can be array or object
     const instance = Array.isArray(data) ? data[0] : data;
 
-    return {
-      ownerJid: instance?.instance?.owner || instance?.owner || undefined,
-      profileName: instance?.instance?.profileName || instance?.profileName || undefined,
-    };
+    // Search for ownerJid in multiple possible locations
+    const ownerJid =
+      instance?.instance?.owner ||
+      instance?.owner ||
+      instance?.instance?.ownerJid ||
+      instance?.ownerJid ||
+      instance?.instance?.wuid ||
+      instance?.wuid ||
+      // Some versions nest under instance.instance.instance
+      instance?.instance?.instance?.owner ||
+      undefined;
+
+    const profileName =
+      instance?.instance?.profileName ||
+      instance?.profileName ||
+      instance?.instance?.profilePicUrl ||
+      undefined;
+
+    console.log(`[evolution] fetchInstanceInfo parsed: ownerJid=${ownerJid || "NOT_FOUND"}, profileName=${profileName || "NOT_FOUND"}`);
+
+    return { ownerJid, profileName };
   } catch (err) {
     console.warn("[evolution] fetchInstanceInfo error:", err);
     return {};

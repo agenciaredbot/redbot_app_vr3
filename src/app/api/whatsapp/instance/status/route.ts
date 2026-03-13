@@ -51,12 +51,16 @@ export async function GET() {
 
     // Fetch phone number if connected but missing from DB
     if (state.state === "open" && !instance.connected_phone) {
+      console.log(`[whatsapp-status] Phone missing, fetching from Evolution API for ${instance.instance_name}...`);
       try {
         const info = await fetchInstanceInfo(instance.instance_name);
+        console.log(`[whatsapp-status] fetchInstanceInfo result:`, JSON.stringify(info));
         if (info.ownerJid) {
           const phone = jidToPhone(info.ownerJid);
           updates.connected_phone = phone;
           console.log(`[whatsapp-status] Connected phone: ${phone}`);
+        } else {
+          console.warn(`[whatsapp-status] ownerJid not found in Evolution response`);
         }
       } catch (phoneErr) {
         console.warn("[whatsapp-status] Could not fetch phone number:", phoneErr);
