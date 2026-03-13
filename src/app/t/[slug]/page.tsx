@@ -1,12 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PropertyGrid } from "@/components/properties/property-grid";
 import { PropertyFilters } from "@/components/properties/property-filters";
+import { PropertyPagination } from "@/components/properties/property-pagination";
 import { GlassCard } from "@/components/ui/glass-card";
 import { InlineChatWrapper } from "@/components/chat/inline-chat-wrapper";
 import { TenantMaintenancePage } from "@/components/tenant/tenant-maintenance-page";
 import { getI18nText } from "@/lib/utils/format";
 import { PLANS } from "@/config/plans";
 import type { PlanTier } from "@/lib/supabase/types";
+
+const PAGE_SIZE = 15;
 
 export default async function TenantHomePage({
   params,
@@ -39,20 +42,22 @@ export default async function TenantHomePage({
     return <TenantMaintenancePage orgName={org.name} />;
   }
 
+  // Pagination
+  const currentPage = Math.max(1, parseInt(filters.page || "1") || 1);
+  const from = (currentPage - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
   // Build query — respect plan property limits
   const planTier = (org.plan_tier as PlanTier) || "basic";
-  const maxProperties = PLANS[planTier]?.limits.maxProperties ?? 50;
-  // -1 means unlimited; cap at 1000 for safety
-  const queryLimit = maxProperties === -1 ? 1000 : maxProperties;
 
   let query = supabase
     .from("properties")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("organization_id", org.id)
     .eq("is_published", true)
     .order("is_featured", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(queryLimit);
+    .range(from, to);
 
   if (filters.type) {
     query = query.eq("property_type", filters.type);
@@ -79,7 +84,10 @@ export default async function TenantHomePage({
     });
   }
 
-  const { data: properties } = await query;
+  const { data: properties, count } = await query;
+
+  const totalProperties = count ?? 0;
+  const totalPages = Math.ceil(totalProperties / PAGE_SIZE);
 
   return (
     <div>
@@ -124,7 +132,14 @@ export default async function TenantHomePage({
             </p>
           </div>
         ) : (
-          <PropertyGrid properties={properties} slug={slug} />
+          <>
+            <PropertyGrid properties={properties} slug={slug} />
+            <PropertyPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalProperties={totalProperties}
+            />
+          </>
         )}
       </section>
     </div>

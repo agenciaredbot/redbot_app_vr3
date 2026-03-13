@@ -24,6 +24,8 @@ export function PropertyFilters({ currentFilters }: PropertyFiltersProps) {
       } else {
         params.delete(key);
       }
+      // Reset to page 1 when filters change
+      params.delete("page");
       // Preserve slug param if present
       const slug = searchParams.get("slug");
       if (slug) params.set("slug", slug);
