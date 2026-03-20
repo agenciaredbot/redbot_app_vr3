@@ -30,11 +30,12 @@ export interface RevidRenderPayload {
   source?: {
     text?: string;
     prompt?: string;
+    stylePrompt?: string;
     durationSeconds?: number;
   };
   media?: {
     type: "custom" | "moving-image" | "stock-video" | "ai-video";
-    quality?: "pro" | "ultra";
+    quality?: "standard" | "pro" | "ultra";
     density?: "low" | "medium" | "high";
     animation?: "none" | "soft" | "dynamic" | "depth";
     useOnlyProvided?: boolean;
@@ -53,8 +54,17 @@ export interface RevidRenderPayload {
     position?: "top" | "middle" | "bottom";
   };
   music?: {
-    trackName?: string;
     enabled?: boolean;
+    trackName?: string;
+    generateMusic?: boolean;
+    generationMusicPrompt?: string;
+  };
+  render?: {
+    resolution?: "720p" | "1080p" | "4k";
+  };
+  options?: {
+    soundEffects?: boolean;
+    addStickers?: boolean;
   };
   aspectRatio?: string;
 }
@@ -114,8 +124,20 @@ export interface CreateVideoRequest {
   script: string;
   imageUrls: string[];
   voiceId?: string;
+  voiceSpeed?: number;
   musicTrack?: string;
+  generateMusic?: boolean;
+  musicPrompt?: string;
+  captionPreset?: string;
+  captionPosition?: "top" | "middle" | "bottom";
+  enableCaptions?: boolean;
+  enableVoice?: boolean;
+  enableMusic?: boolean;
   aspectRatio?: string;
+  resolution?: "720p" | "1080p" | "4k";
+  mediaQuality?: "standard" | "pro" | "ultra";
+  animation?: "none" | "soft" | "dynamic" | "depth";
+  soundEffects?: boolean;
 }
 
 export interface VideoPreset {
@@ -220,4 +242,93 @@ export const VOICE_OPTIONS: VoiceOption[] = [
 ];
 
 export const DEFAULT_VOICE_ID = "SmgKjOvC1aIujLWcMzqq"; // Alisson — colombiana
-export const DEFAULT_MUSIC_TRACK = "Observer";
+export const DEFAULT_MUSIC_TRACK = "Motivational";
+export const DEFAULT_CAPTION_PRESET = "Wrap 1";
+export const DEFAULT_RESOLUTION = "1080p";
+
+// ── Caption presets ──
+
+export interface CaptionPresetOption {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export const CAPTION_PRESETS: CaptionPresetOption[] = [
+  { id: "Wrap 1", label: "Wrap 1", description: "Subtítulos envolventes con animación. El más popular." },
+  { id: "Wrap 2", label: "Wrap 2", description: "Variante envolvente con estilo alternativo." },
+  { id: "Revid", label: "Revid", description: "Estilo propio de Revid, moderno y limpio." },
+  { id: "Hormozi", label: "Hormozi", description: "Estilo Alex Hormozi: grande, bold e impactante." },
+  { id: "Basic", label: "Básico", description: "Subtítulos simples y legibles sin decoración." },
+  { id: "Karate", label: "Karate", description: "Efecto dinámico con animación de corte rápido." },
+  { id: "Pop", label: "Pop", description: "Estilo colorido y llamativo para contenido juvenil." },
+  { id: "Neon", label: "Neon", description: "Efecto neón brillante sobre fondo oscuro." },
+  { id: "Ali Abdaal", label: "Ali Abdaal", description: "Estilo educativo minimalista y elegante." },
+  { id: "Faceless", label: "Faceless", description: "Optimizado para videos sin rostro (solo voz)." },
+];
+
+// ── Music tracks ──
+
+export interface MusicTrackOption {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+}
+
+export const MUSIC_TRACKS: MusicTrackOption[] = [
+  { id: "Motivational", label: "Motivacional", emoji: "💪", description: "Energía positiva, ideal para propiedades aspiracionales" },
+  { id: "Corporate", label: "Corporativo", emoji: "🏢", description: "Profesional y serio, ideal para oficinas y comercial" },
+  { id: "Upbeat", label: "Upbeat", emoji: "🎵", description: "Ritmo alegre y dinámico para captar atención rápido" },
+  { id: "Cinematic", label: "Cinemático", emoji: "🎬", description: "Épico y dramático, ideal para propiedades de lujo" },
+  { id: "Chill", label: "Chill", emoji: "😌", description: "Relajado y suave, perfecto para casas campestres" },
+  { id: "Happy", label: "Alegre", emoji: "😊", description: "Positivo y ligero, bueno para familias" },
+  { id: "Epic", label: "Épico", emoji: "⚡", description: "Grandioso e imponente, para proyectos de gran escala" },
+  { id: "Lo-Fi", label: "Lo-Fi", emoji: "🎧", description: "Ambiente tranquilo y moderno, estilo tendencia" },
+  { id: "Observer", label: "Observer", emoji: "🔭", description: "Neutral y contemplativo, versátil para todo tipo" },
+  { id: "Sad", label: "Melancólico", emoji: "🌧️", description: "Emotivo y profundo, para storytelling" },
+];
+
+// ── Resolution options ──
+
+export interface ResolutionOption {
+  id: "720p" | "1080p" | "4k";
+  label: string;
+  description: string;
+}
+
+export const RESOLUTION_OPTIONS: ResolutionOption[] = [
+  { id: "720p", label: "720p", description: "Rápido, menos créditos" },
+  { id: "1080p", label: "1080p HD", description: "Calidad estándar, recomendado" },
+  { id: "4k", label: "4K Ultra HD", description: "Máxima calidad, más créditos" },
+];
+
+// ── Aspect ratio options ──
+
+export interface AspectRatioOption {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+export const ASPECT_RATIO_OPTIONS: AspectRatioOption[] = [
+  { id: "9 / 16", label: "Vertical", icon: "📱", description: "TikTok, Reels, Shorts" },
+  { id: "16 / 9", label: "Horizontal", icon: "🖥️", description: "YouTube, Web" },
+  { id: "1 / 1", label: "Cuadrado", icon: "⬜", description: "Feed de Instagram" },
+];
+
+// ── Animation options ──
+
+export interface AnimationOption {
+  id: "none" | "soft" | "dynamic" | "depth";
+  label: string;
+  description: string;
+}
+
+export const ANIMATION_OPTIONS: AnimationOption[] = [
+  { id: "soft", label: "Suave", description: "Movimiento sutil y elegante" },
+  { id: "dynamic", label: "Dinámico", description: "Movimiento enérgico y llamativo" },
+  { id: "depth", label: "Profundidad", description: "Efecto 3D con parallax" },
+  { id: "none", label: "Sin animación", description: "Imágenes estáticas" },
+];

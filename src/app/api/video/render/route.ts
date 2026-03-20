@@ -58,9 +58,18 @@ export async function POST(request: NextRequest) {
       workflow,
       script,
       imageUrls,
+      enableVoice = true,
       voiceId,
+      voiceSpeed,
+      enableCaptions = true,
+      captionPreset,
+      captionPosition,
+      enableMusic = true,
       musicTrack,
       aspectRatio,
+      resolution,
+      animation,
+      soundEffects,
     } = body;
 
     // Validate
@@ -95,33 +104,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build Revid payload
+    // Build Revid payload with all user options
     const revidPayload: RevidRenderPayload = {
       workflow,
       aspectRatio: aspectRatio || "9 / 16",
       voice: {
-        enabled: true,
+        enabled: enableVoice !== false,
         voiceId: voiceId || DEFAULT_VOICE_ID,
-        speed: 1,
+        speed: voiceSpeed || 1,
       },
       captions: {
-        enabled: true,
-        preset: "Wrap 1",
-        position: "bottom",
+        enabled: enableCaptions !== false,
+        preset: captionPreset || "Wrap 1",
+        position: captionPosition || "bottom",
       },
       music: {
+        enabled: enableMusic !== false,
         trackName: musicTrack || DEFAULT_MUSIC_TRACK,
+      },
+      render: {
+        resolution: resolution || "1080p",
+      },
+      options: {
+        soundEffects: soundEffects || false,
       },
     };
 
     // Set source based on workflow
+    const mediaAnimation = animation || "soft";
+
     if (workflow === "prompt-to-video") {
       revidPayload.source = { prompt: script, durationSeconds: 30 };
       revidPayload.media = {
         type: "moving-image",
         quality: "pro",
         density: "high",
-        animation: "soft",
+        animation: mediaAnimation,
       };
     } else {
       // script-to-video or ad-generator
@@ -133,6 +151,7 @@ export async function POST(request: NextRequest) {
           type: "custom",
           useOnlyProvided: true,
           turnImagesIntoVideos: true,
+          animation: mediaAnimation,
           provided: imageUrls.map((url, i) => ({
             url,
             title: `Imagen ${i + 1}`,
@@ -145,7 +164,7 @@ export async function POST(request: NextRequest) {
           type: "moving-image",
           quality: "pro",
           density: "high",
-          animation: "soft",
+          animation: mediaAnimation,
         };
       }
     }
