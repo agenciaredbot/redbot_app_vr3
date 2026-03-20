@@ -57,15 +57,14 @@ export async function GET(request: NextRequest) {
       if (revidStatus) {
         const status = (revidStatus.status || "").toLowerCase();
 
-        if (status === "done" || status === "completed") {
+        if (status === "ready" || status === "done" || status === "completed") {
           // Update DB
           await supabase
             .from("video_projects")
             .update({
               revid_status: "completed",
               revid_video_url: revidStatus.videoUrl || null,
-              revid_thumbnail_url: revidStatus.thumbnailUrl || null,
-              credits_used: revidStatus.creditsUsed || null,
+              credits_used: revidStatus.creditsConsumed || null,
               completed_at: new Date().toISOString(),
             })
             .eq("id", videoProjectId);
@@ -73,7 +72,6 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({
             status: "completed",
             videoUrl: revidStatus.videoUrl || null,
-            thumbnailUrl: revidStatus.thumbnailUrl || null,
           });
         }
 
@@ -82,13 +80,13 @@ export async function GET(request: NextRequest) {
             .from("video_projects")
             .update({
               revid_status: "failed",
-              error_message: revidStatus.error || "Error en Revid",
+              error_message: "Error en Revid",
             })
             .eq("id", videoProjectId);
 
           return NextResponse.json({
             status: "failed",
-            error: revidStatus.error || "Error al renderizar el video.",
+            error: "Error al renderizar el video.",
           });
         }
       }

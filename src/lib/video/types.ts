@@ -60,16 +60,19 @@ export interface RevidRenderPayload {
 }
 
 export interface RevidRenderResponse {
-  id: string;
-  status?: string;
+  success?: number;
+  pid: string;
+  workflow?: string;
+  webhookUrl?: string;
   [key: string]: unknown;
 }
 
 export interface RevidStatusResponse {
-  status: string;
-  videoUrl?: string;
-  thumbnailUrl?: string;
-  creditsUsed?: number;
+  success?: number;
+  pid?: string;
+  status: string;           // "building" | "ready" | "failed"
+  videoUrl?: string;         // CDN URL when ready
+  creditsConsumed?: number;
   error?: string;
   [key: string]: unknown;
 }

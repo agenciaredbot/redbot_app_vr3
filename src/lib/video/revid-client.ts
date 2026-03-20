@@ -117,9 +117,9 @@ export async function renderVideo(
     return { projectId: null, error: error || "No response from Revid" };
   }
 
-  const projectId = data.id || null;
+  const projectId = data.pid || null;
   if (!projectId) {
-    console.error("[revid] Render response missing id:", data);
+    console.error("[revid] Render response missing pid:", JSON.stringify(data));
     return { projectId: null, error: "Revid no devolvió un ID de proyecto" };
   }
 

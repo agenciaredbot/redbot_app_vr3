@@ -101,14 +101,13 @@ export async function POST(request: NextRequest) {
 
     const status = (revidStatus.status || "").toLowerCase();
 
-    if (status === "done" || status === "completed") {
+    if (status === "ready" || status === "done" || status === "completed") {
       await supabase
         .from("video_projects")
         .update({
           revid_status: "completed",
           revid_video_url: revidStatus.videoUrl || null,
-          revid_thumbnail_url: revidStatus.thumbnailUrl || null,
-          credits_used: revidStatus.creditsUsed || null,
+          credits_used: revidStatus.creditsConsumed || null,
           completed_at: new Date().toISOString(),
         })
         .eq("id", videoProject.id);
@@ -121,7 +120,7 @@ export async function POST(request: NextRequest) {
         .from("video_projects")
         .update({
           revid_status: "failed",
-          error_message: revidStatus.error || "Error en Revid",
+          error_message: "Error en Revid",
         })
         .eq("id", videoProject.id);
 
