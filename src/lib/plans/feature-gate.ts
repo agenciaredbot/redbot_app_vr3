@@ -128,7 +128,8 @@ export type FeatureFlag =
   | "whatsappChannel"
   | "portalSyndication"
   | "opportunitiesNetwork"
-  | "socialPublishing";
+  | "socialPublishing"
+  | "videoCreation";
 
 interface FeatureFlagDefinition {
   /** Key in PlanDefinition.limits to check */
@@ -189,6 +190,12 @@ const FEATURE_REGISTRY: Record<FeatureFlag, FeatureFlagDefinition> = {
     enabledValue: true,
     label: "publicación en redes sociales",
     requiredPlan: "power",
+  },
+  videoCreation: {
+    planKey: "videoCreation",
+    enabledValue: true,
+    label: "creación de videos con IA",
+    requiredPlan: "omni",
   },
 };
 

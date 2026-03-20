@@ -5,6 +5,8 @@ import { PropertyForm } from "./property-form";
 import { ImageUpload } from "./image-upload";
 import { PropertyPortals } from "@/components/portals/property-portals";
 import { InstagramPublishDialog } from "@/components/social/instagram-publish-dialog";
+import { VideoCreateDialog } from "@/components/video/video-create-dialog";
+import { VideoHistory } from "@/components/video/video-history";
 import { GlassCard } from "@/components/ui/glass-card";
 import { getI18nText } from "@/lib/utils/format";
 import type { Property } from "@/lib/supabase/types";
@@ -65,6 +67,7 @@ export function PropertyEditWrapper({ property, orgSlug }: PropertyEditWrapperPr
     (property.images as string[]) || []
   );
   const [igDialogOpen, setIgDialogOpen] = useState(false);
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
 
   const title = getI18nText(property.title);
   const propertySlug = property.slug;
@@ -144,11 +147,46 @@ export function PropertyEditWrapper({ property, orgSlug }: PropertyEditWrapperPr
         </GlassCard>
       )}
 
+      {/* Video creation — Omni plan */}
+      {isPublished && images.length > 0 && (
+        <GlassCard>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-accent-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+              </svg>
+              <h3 className="text-sm font-semibold text-text-primary">
+                Videos Marketing
+              </h3>
+            </div>
+            <button
+              onClick={() => setVideoDialogOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-accent-purple/10 to-accent-blue/10 text-accent-purple border border-accent-purple/20 hover:from-accent-purple/20 hover:to-accent-blue/20 text-sm font-medium transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Crear Video
+            </button>
+          </div>
+          <p className="text-[11px] text-text-muted mt-2">
+            Crea videos de marketing con IA para esta propiedad. Requiere plan Omni.
+          </p>
+          <VideoHistory propertyId={property.id} />
+        </GlassCard>
+      )}
+
       <InstagramPublishDialog
         property={property}
         orgSlug={orgSlug}
         open={igDialogOpen}
         onClose={() => setIgDialogOpen(false)}
+      />
+      <VideoCreateDialog
+        property={property}
+        orgSlug={orgSlug}
+        open={videoDialogOpen}
+        onClose={() => setVideoDialogOpen(false)}
       />
     </div>
   );

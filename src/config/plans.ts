@@ -23,6 +23,7 @@ export interface PlanDefinition {
     portalSyndication: boolean;
     opportunitiesNetwork: boolean;
     socialPublishing: boolean;
+    videoCreation: boolean;
   };
 }
 
@@ -46,6 +47,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       portalSyndication: false,
       opportunitiesNetwork: false,
       socialPublishing: false,
+      videoCreation: false,
     },
   },
   power: {
@@ -67,6 +69,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       portalSyndication: true,
       opportunitiesNetwork: true,
       socialPublishing: true,
+      videoCreation: false,
     },
   },
   omni: {
@@ -88,6 +91,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       portalSyndication: true,
       opportunitiesNetwork: true,
       socialPublishing: true,
+      videoCreation: true,
     },
   },
 };

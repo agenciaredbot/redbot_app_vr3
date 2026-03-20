@@ -105,4 +105,8 @@ export const RATE_LIMITS = {
   scrape: { prefix: "scrape", maxRequests: 10, windowSeconds: 60 },
   /** Social publish: 10 posts per minute per IP */
   socialPublish: { prefix: "social-publish", maxRequests: 10, windowSeconds: 60 },
+  /** Video render: 5 renders per 5 minutes per IP */
+  videoRender: { prefix: "video-render", maxRequests: 5, windowSeconds: 300 },
+  /** Video webhook: 100 per minute per IP */
+  videoWebhook: { prefix: "video-webhook", maxRequests: 100, windowSeconds: 60 },
 } as const;
