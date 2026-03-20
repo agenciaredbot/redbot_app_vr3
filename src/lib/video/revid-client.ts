@@ -81,7 +81,7 @@ async function revidRequest<T>(
     const data = (await res.json()) as T;
     return { data, error: null, status: res.status };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error de conexión con Revid";
+    const msg = err instanceof Error ? err.message : "Error de conexión con el servicio de video";
     console.error(`[revid] ${path} fetch error:`, msg);
     return { data: null, error: msg, status: 0 };
   }
@@ -120,7 +120,7 @@ export async function renderVideo(
   const projectId = data.pid || null;
   if (!projectId) {
     console.error("[revid] Render response missing pid:", JSON.stringify(data));
-    return { projectId: null, error: "Revid no devolvió un ID de proyecto" };
+    return { projectId: null, error: "El servicio de video no devolvió un ID de proyecto" };
   }
 
   console.log(`[revid] Render started: pid=${projectId}`);

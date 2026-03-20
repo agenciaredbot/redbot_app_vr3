@@ -352,7 +352,7 @@ export interface CaptionPresetOption {
 export const CAPTION_PRESETS: CaptionPresetOption[] = [
   { id: "Wrap 1", label: "Wrap 1", description: "Subtítulos envolventes con animación. El más popular." },
   { id: "Wrap 2", label: "Wrap 2", description: "Variante envolvente con estilo alternativo." },
-  { id: "Revid", label: "Revid", description: "Estilo propio de Revid, moderno y limpio." },
+  { id: "Revid", label: "Moderno", description: "Estilo moderno y limpio con tipografía dinámica." },
   { id: "Hormozi", label: "Hormozi", description: "Estilo Alex Hormozi: grande, bold e impactante." },
   { id: "Basic", label: "Básico", description: "Subtítulos simples y legibles sin decoración." },
   { id: "Karate", label: "Karate", description: "Efecto dinámico con animación de corte rápido." },

@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         .from("video_projects")
         .update({
           revid_status: "failed",
-          error_message: "Error en Revid",
+          error_message: "Error al procesar el video",
         })
         .eq("id", videoProject.id);
 
