@@ -10,7 +10,9 @@
 export type RevidWorkflow =
   | "script-to-video"
   | "ad-generator"
-  | "prompt-to-video";
+  | "prompt-to-video"
+  | "article-to-video"
+  | "static-background-video";
 
 export type VideoProjectStatus =
   | "pending"
@@ -27,6 +29,7 @@ export interface RevidMediaItem {
 export interface RevidRenderPayload {
   webhookUrl?: string;
   workflow: RevidWorkflow;
+  slugNew?: string;
   source?: {
     text?: string;
     prompt?: string;
@@ -121,6 +124,7 @@ export interface VideoProject {
 export interface CreateVideoRequest {
   propertyId: string;
   workflow: RevidWorkflow;
+  templateSlug?: string;
   script: string;
   imageUrls: string[];
   voiceId?: string;
@@ -146,34 +150,125 @@ export interface VideoPreset {
   description: string;
   workflow: RevidWorkflow;
   icon: string;
+  slugNew?: string;
+  category: "inmobiliaria" | "marketing" | "redes" | "creativo";
+  recommended?: boolean;
 }
 
-// ── Presets for real estate ──
+// ── Templates for real estate ──
 
 export const VIDEO_PRESETS: VideoPreset[] = [
+  // ── Inmobiliaria (core) ──
   {
-    id: "showcase",
-    label: "Vitrina",
-    description:
-      "Video de presentación con las fotos de tu propiedad, narración y música.",
+    id: "real-estate",
+    label: "Marketing Inmobiliario",
+    description: "Template especializado para propiedades. Usa tus fotos, datos y genera un video profesional de venta.",
     workflow: "script-to-video",
+    slugNew: "real-estate-marketing-video",
     icon: "🏠",
+    category: "inmobiliaria",
+    recommended: true,
   },
   {
-    id: "ad",
-    label: "Anuncio",
-    description:
-      "Video estilo publicitario optimizado para redes sociales.",
+    id: "photo-showcase",
+    label: "Vitrina de Fotos",
+    description: "Convierte las fotos de tu propiedad en un recorrido visual con transiciones y música.",
+    workflow: "script-to-video",
+    slugNew: "image-sequence-to-video",
+    icon: "📸",
+    category: "inmobiliaria",
+  },
+  {
+    id: "photo-to-video",
+    label: "Foto a Video",
+    description: "Transforma fotos estáticas en videos dinámicos con movimiento y efectos.",
+    workflow: "script-to-video",
+    slugNew: "photo-to-video-converter",
+    icon: "🎞️",
+    category: "inmobiliaria",
+  },
+  {
+    id: "faceless",
+    label: "Sin Rostro",
+    description: "Video con voz e imágenes, sin avatar. Ideal para contenido rápido y profesional.",
+    workflow: "script-to-video",
+    slugNew: "faceless-video",
+    icon: "🎙️",
+    category: "inmobiliaria",
+  },
+  // ── Marketing & Ads ──
+  {
+    id: "ad-generator",
+    label: "Anuncio Publicitario",
+    description: "Video optimizado para anuncios pagados en Instagram y Facebook Ads.",
     workflow: "ad-generator",
+    slugNew: "ai-ad-generator",
     icon: "📢",
+    category: "marketing",
   },
   {
-    id: "free",
-    label: "Libre",
-    description:
-      "Describe lo que quieres y la IA genera el video completo.",
+    id: "product-video",
+    label: "Video de Producto",
+    description: "Presenta la propiedad como un producto premium con estilo comercial.",
+    workflow: "script-to-video",
+    slugNew: "create-product-video",
+    icon: "🎯",
+    category: "marketing",
+  },
+  {
+    id: "motivational",
+    label: "Motivacional",
+    description: "Contenido aspiracional: \"Tu nuevo hogar te espera\". Ideal para captar atención.",
+    workflow: "prompt-to-video",
+    slugNew: "ai-motivational-video-generator",
+    icon: "💪",
+    category: "marketing",
+  },
+  // ── Redes Sociales ──
+  {
+    id: "reel",
+    label: "Instagram Reel",
+    description: "Formato vertical optimizado para Instagram Reels con subtítulos y música viral.",
+    workflow: "script-to-video",
+    slugNew: "ai-reel-generator",
+    icon: "📱",
+    category: "redes",
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    description: "Video con formato TikTok: ritmo rápido, texto dinámico, hooks de atención.",
+    workflow: "script-to-video",
+    slugNew: "ai-tiktok-video-generator",
+    icon: "🎵",
+    category: "redes",
+  },
+  {
+    id: "youtube-short",
+    label: "YouTube Short",
+    description: "Short vertical para YouTube con estilo educativo/informativo sobre la propiedad.",
+    workflow: "script-to-video",
+    slugNew: "ai-youtube-shorts-generator",
+    icon: "▶️",
+    category: "redes",
+  },
+  // ── Creativos ──
+  {
+    id: "cinematic",
+    label: "Cinemático",
+    description: "Estilo cinematográfico con tomas épicas. Ideal para propiedades de lujo.",
+    workflow: "prompt-to-video",
+    slugNew: "ai-cinematic-video",
+    icon: "🎬",
+    category: "creativo",
+  },
+  {
+    id: "free-prompt",
+    label: "Libre (IA)",
+    description: "Describe lo que quieres y la IA genera todo: imágenes, narración y edición.",
     workflow: "prompt-to-video",
     icon: "✨",
+    category: "creativo",
   },
 ];
 

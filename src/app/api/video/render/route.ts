@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
     const {
       propertyId,
       workflow,
+      templateSlug,
       script,
       imageUrls,
       enableVoice = true,
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["script-to-video", "ad-generator", "prompt-to-video"].includes(workflow)) {
+    if (!["script-to-video", "ad-generator", "prompt-to-video", "article-to-video", "static-background-video"].includes(workflow)) {
       return NextResponse.json(
         { error: "Workflow inválido." },
         { status: 400 }
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
     // Build Revid payload with all user options
     const revidPayload: RevidRenderPayload = {
       workflow,
+      ...(templateSlug ? { slugNew: templateSlug } : {}),
       aspectRatio: aspectRatio || "9 / 16",
       voice: {
         enabled: enableVoice !== false,

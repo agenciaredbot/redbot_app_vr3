@@ -46,7 +46,7 @@ export function VideoCreateDialog({
   onClose,
 }: VideoCreateDialogProps) {
   // Form state — basic
-  const [preset, setPreset] = useState<string>("showcase");
+  const [preset, setPreset] = useState<string>("real-estate");
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [script, setScript] = useState("");
   // Voice
@@ -91,7 +91,7 @@ export function VideoCreateDialog({
     if (open) {
       setModalState("form");
       setModalError("");
-      setPreset("showcase");
+      setPreset("real-estate");
       setSelectedImages(images.slice(0, 10));
       setScript(generatePropertyScript(property));
       setEnableVoice(true);
@@ -122,6 +122,11 @@ export function VideoCreateDialog({
   const getWorkflow = (): RevidWorkflow => {
     const p = VIDEO_PRESETS.find((vp) => vp.id === preset);
     return p?.workflow || "script-to-video";
+  };
+
+  const getTemplateSlug = (): string | undefined => {
+    const p = VIDEO_PRESETS.find((vp) => vp.id === preset);
+    return p?.slugNew;
   };
 
   // ─── Polling logic (runs independently of modal) ───
@@ -201,6 +206,7 @@ export function VideoCreateDialog({
         body: JSON.stringify({
           propertyId: property.id,
           workflow: getWorkflow(),
+          templateSlug: getTemplateSlug(),
           script,
           imageUrls: selectedImages,
           enableVoice,
@@ -314,33 +320,55 @@ export function VideoCreateDialog({
               {/* ── FORM ── */}
               {(modalState === "form" || modalState === "submitting") && (
                 <div className="space-y-6">
-                  {/* Preset selection */}
+                  {/* Template selection — grouped by category */}
                   <div>
                     <label className="text-sm font-medium text-text-primary mb-3 block">
                       Tipo de video
                     </label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {VIDEO_PRESETS.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => setPreset(p.id)}
-                          disabled={modalState === "submitting"}
-                          className={`p-3 rounded-xl border text-left transition-all ${
-                            preset === p.id
-                              ? "border-accent-purple bg-accent-purple/10"
-                              : "border-border-glass hover:border-border-glass-hover hover:bg-bg-glass-hover"
-                          }`}
-                        >
-                          <span className="text-xl">{p.icon}</span>
-                          <p className="text-sm font-medium text-text-primary mt-1">
-                            {p.label}
-                          </p>
-                          <p className="text-[10px] text-text-muted mt-0.5 line-clamp-2">
-                            {p.description}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
+
+                    {/* Category tabs */}
+                    {([
+                      { key: "inmobiliaria", label: "🏠 Inmobiliaria", desc: "Optimizados para propiedades" },
+                      { key: "marketing", label: "📢 Marketing", desc: "Anuncios y publicidad" },
+                      { key: "redes", label: "📱 Redes Sociales", desc: "TikTok, Reels, Shorts" },
+                      { key: "creativo", label: "✨ Creativo", desc: "IA generativa libre" },
+                    ] as const).map((cat) => {
+                      const templates = VIDEO_PRESETS.filter((p) => p.category === cat.key);
+                      if (templates.length === 0) return null;
+                      const isOpen = templates.some((t) => t.id === preset);
+                      return (
+                        <div key={cat.key} className="mb-3">
+                          <p className="text-[10px] uppercase tracking-widest text-text-muted mb-1.5">{cat.label}</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {templates.map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={() => setPreset(p.id)}
+                                disabled={modalState === "submitting"}
+                                className={`p-3 rounded-xl border text-left transition-all relative ${
+                                  preset === p.id
+                                    ? "border-accent-purple bg-accent-purple/10"
+                                    : "border-border-glass hover:border-border-glass-hover hover:bg-bg-glass-hover"
+                                }`}
+                              >
+                                {p.recommended && (
+                                  <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[8px] font-semibold rounded-full bg-accent-green/20 text-accent-green border border-accent-green/30">
+                                    RECOMENDADO
+                                  </span>
+                                )}
+                                <span className="text-lg">{p.icon}</span>
+                                <p className="text-xs font-medium text-text-primary mt-1">
+                                  {p.label}
+                                </p>
+                                <p className="text-[9px] text-text-muted mt-0.5 line-clamp-2 leading-relaxed">
+                                  {p.description}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Image selector */}
