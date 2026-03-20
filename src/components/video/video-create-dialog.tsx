@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Image from "next/image";
 import type { Property } from "@/lib/supabase/types";
 import type { RevidWorkflow } from "@/lib/video/types";
 import { VIDEO_PRESETS } from "@/lib/video/types";
@@ -240,12 +239,10 @@ export function VideoCreateDialog({
                             : "border-transparent opacity-60 hover:opacity-100"
                         }`}
                       >
-                        <Image
+                        <img
                           src={img}
                           alt=""
-                          fill
-                          className="object-cover"
-                          sizes="80px"
+                          className="absolute inset-0 w-full h-full object-cover"
                         />
                         {selectedImages.includes(img) && (
                           <div className="absolute top-1 right-1 w-5 h-5 bg-accent-purple rounded-full flex items-center justify-center">
