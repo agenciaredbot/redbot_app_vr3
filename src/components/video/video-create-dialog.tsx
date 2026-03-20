@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Property } from "@/lib/supabase/types";
 import type { RevidWorkflow } from "@/lib/video/types";
-import { VIDEO_PRESETS } from "@/lib/video/types";
+import { VIDEO_PRESETS, VOICE_OPTIONS, DEFAULT_VOICE_ID } from "@/lib/video/types";
 import { generatePropertyScript } from "@/lib/video/script-generator";
 
 /* ─── Types ─── */
@@ -38,6 +38,7 @@ export function VideoCreateDialog({
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [script, setScript] = useState("");
   const [enableVoice, setEnableVoice] = useState(true);
+  const [voiceId, setVoiceId] = useState(DEFAULT_VOICE_ID);
   const [enableCaptions, setEnableCaptions] = useState(true);
   const [aspectRatio, setAspectRatio] = useState("9 / 16");
 
@@ -67,6 +68,7 @@ export function VideoCreateDialog({
       setSelectedImages(images.slice(0, 10));
       setScript(generatePropertyScript(property));
       setEnableVoice(true);
+      setVoiceId(DEFAULT_VOICE_ID);
       setEnableCaptions(true);
       setAspectRatio("9 / 16");
     }
@@ -165,6 +167,7 @@ export function VideoCreateDialog({
           workflow: getWorkflow(),
           script,
           imageUrls: selectedImages,
+          voiceId: enableVoice ? voiceId : undefined,
           aspectRatio,
         }),
       });
@@ -349,18 +352,117 @@ export function VideoCreateDialog({
                     />
                   </div>
 
+                  {/* Voice selector */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-medium text-text-primary">
+                        Voz del narrador
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={enableVoice}
+                          onChange={(e) => setEnableVoice(e.target.checked)}
+                          disabled={modalState === "submitting"}
+                          className="rounded border-border-glass w-3.5 h-3.5"
+                        />
+                        Activar voz
+                      </label>
+                    </div>
+
+                    {enableVoice && (
+                      <div className="space-y-3">
+                        {/* Female voices */}
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest text-text-muted mb-2">Voces femeninas</p>
+                          <div className="space-y-1.5">
+                            {VOICE_OPTIONS.filter((v) => v.gender === "female").map((voice) => (
+                              <button
+                                key={voice.id}
+                                onClick={() => setVoiceId(voice.id)}
+                                disabled={modalState === "submitting"}
+                                className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
+                                  voiceId === voice.id
+                                    ? "border-accent-purple bg-accent-purple/10"
+                                    : "border-border-glass hover:border-border-glass-hover hover:bg-bg-glass-hover"
+                                }`}
+                              >
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                  voiceId === voice.id ? "bg-accent-purple/20" : "bg-white/5"
+                                }`}>
+                                  <svg className={`w-4 h-4 ${voiceId === voice.id ? "text-accent-purple" : "text-text-muted"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                                  </svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-text-primary">{voice.name}</span>
+                                    {voice.tags.map((tag) => (
+                                      <span key={tag} className="px-1.5 py-0.5 text-[9px] rounded-full bg-white/5 text-text-muted">{tag}</span>
+                                    ))}
+                                  </div>
+                                  <p className="text-[11px] text-text-secondary mt-0.5 leading-relaxed">{voice.description}</p>
+                                </div>
+                                {voiceId === voice.id && (
+                                  <div className="w-5 h-5 rounded-full bg-accent-purple flex items-center justify-center flex-shrink-0 mt-1">
+                                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Male voices */}
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest text-text-muted mb-2">Voces masculinas</p>
+                          <div className="space-y-1.5">
+                            {VOICE_OPTIONS.filter((v) => v.gender === "male").map((voice) => (
+                              <button
+                                key={voice.id}
+                                onClick={() => setVoiceId(voice.id)}
+                                disabled={modalState === "submitting"}
+                                className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
+                                  voiceId === voice.id
+                                    ? "border-accent-purple bg-accent-purple/10"
+                                    : "border-border-glass hover:border-border-glass-hover hover:bg-bg-glass-hover"
+                                }`}
+                              >
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                  voiceId === voice.id ? "bg-accent-purple/20" : "bg-white/5"
+                                }`}>
+                                  <svg className={`w-4 h-4 ${voiceId === voice.id ? "text-accent-purple" : "text-text-muted"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                                  </svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-text-primary">{voice.name}</span>
+                                    {voice.tags.map((tag) => (
+                                      <span key={tag} className="px-1.5 py-0.5 text-[9px] rounded-full bg-white/5 text-text-muted">{tag}</span>
+                                    ))}
+                                  </div>
+                                  <p className="text-[11px] text-text-secondary mt-0.5 leading-relaxed">{voice.description}</p>
+                                </div>
+                                {voiceId === voice.id && (
+                                  <div className="w-5 h-5 rounded-full bg-accent-purple flex items-center justify-center flex-shrink-0 mt-1">
+                                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Options row */}
                   <div className="flex flex-wrap gap-4">
-                    <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={enableVoice}
-                        onChange={(e) => setEnableVoice(e.target.checked)}
-                        disabled={modalState === "submitting"}
-                        className="rounded border-border-glass"
-                      />
-                      Narración de voz
-                    </label>
                     <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
                       <input
                         type="checkbox"

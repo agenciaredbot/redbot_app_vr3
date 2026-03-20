@@ -155,6 +155,69 @@ export const VIDEO_PRESETS: VideoPreset[] = [
   },
 ];
 
-// ── Default voice for Spanish (Colombia) ──
-export const DEFAULT_VOICE_ID = "cgSgspJ2msm6clMCkdW9"; // ElevenLabs Spanish voice
+// ── Voice options (ElevenLabs via Revid) ──
+
+export interface VoiceOption {
+  id: string;
+  name: string;
+  gender: "female" | "male";
+  description: string;
+  tags: string[];
+}
+
+export const VOICE_OPTIONS: VoiceOption[] = [
+  // ── Femeninas ──
+  {
+    id: "SmgKjOvC1aIujLWcMzqq",
+    name: "Alisson",
+    gender: "female",
+    description: "Voz cálida y natural con acento colombiano suave. Ideal para el mercado local.",
+    tags: ["Colombiana", "Cálida", "Natural"],
+  },
+  {
+    id: "cgSgspJ2msm6clMCkdW9",
+    name: "Jessica",
+    gender: "female",
+    description: "Voz joven y energética. Perfecta para contenido dinámico y llamativo en redes sociales.",
+    tags: ["Energética", "Joven", "Multiidioma"],
+  },
+  {
+    id: "oWSxI36XAKnfMWmzmQok",
+    name: "Milena",
+    gender: "female",
+    description: "Voz suave y elegante con tono neutral. Ideal para propiedades de lujo y contenido premium.",
+    tags: ["Elegante", "Suave", "Neutral"],
+  },
+  // ── Masculinas ──
+  {
+    id: "VvYiNBPylZtUh8Bf6u8l",
+    name: "Juan",
+    gender: "male",
+    description: "Voz amigable y cercana. Transmite confianza de forma natural y relajada.",
+    tags: ["Amigable", "Cercano", "Relajado"],
+  },
+  {
+    id: "GcbypXUfJn5DbptRc2U7",
+    name: "Luján",
+    gender: "male",
+    description: "Voz cálida y profesional con tono neutro. Versátil para todo tipo de propiedades.",
+    tags: ["Profesional", "Cálida", "Versátil"],
+  },
+  {
+    id: "beQfcCW5PgdTQs4cETaz",
+    name: "Juan (Conversacional)",
+    gender: "male",
+    description: "Voz natural estilo conversación. Como si un amigo te recomendara la propiedad.",
+    tags: ["Conversacional", "Natural", "Casual"],
+  },
+  {
+    id: "57D8YIbQSuE3REDPO6Vm",
+    name: "Horacio",
+    gender: "male",
+    description: "Voz segura y con autoridad. Transmite solidez y confiabilidad para propiedades de alto valor.",
+    tags: ["Seguro", "Confiable", "Autoridad"],
+  },
+];
+
+export const DEFAULT_VOICE_ID = "SmgKjOvC1aIujLWcMzqq"; // Alisson — colombiana
 export const DEFAULT_MUSIC_TRACK = "Observer";
