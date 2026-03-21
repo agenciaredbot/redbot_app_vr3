@@ -25,7 +25,7 @@ export default async function TenantHomePage({
   // Get org
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name, slug, agent_name, agent_welcome_message, plan_status, trial_ends_at, plan_tier")
+    .select("id, name, slug, agent_name, agent_welcome_message, plan_status, trial_ends_at, plan_tier, portal_headline, portal_subtitle")
     .eq("slug", slug)
     .single();
 
@@ -95,17 +95,27 @@ export default async function TenantHomePage({
       <section className="relative py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl font-bold text-text-primary mb-4">
-            Encuentra tu{" "}
-            <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">
-              hogar ideal
-            </span>
+            {org.portal_headline ? (
+              org.portal_headline
+            ) : (
+              <>
+                Encuentra tu{" "}
+                <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">
+                  hogar ideal
+                </span>
+              </>
+            )}
           </h1>
           <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-            Explora nuestra selección de propiedades o chatea con{" "}
-            <span className="text-accent-cyan font-medium">
-              {org.agent_name}
-            </span>
-            , nuestro agente AI, para una búsqueda personalizada.
+            {org.portal_subtitle || (
+              <>
+                Explora nuestra selección de propiedades o chatea con{" "}
+                <span className="text-accent-cyan font-medium">
+                  {org.agent_name}
+                </span>
+                , nuestro agente AI, para una búsqueda personalizada.
+              </>
+            )}
           </p>
         </div>
       </section>

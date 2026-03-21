@@ -25,6 +25,8 @@ interface Organization {
   agent_personality: string | null;
   agent_welcome_message: { es?: string } | null;
   agent_language: string | null;
+  portal_headline: string | null;
+  portal_subtitle: string | null;
   plan_tier: string;
   plan_status: string;
   max_properties: number;
@@ -85,12 +87,20 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
   const [aiSaved, setAiSaved] = useState(false);
   const [aiLoaded, setAiLoaded] = useState(false);
 
+  // --- Portal state ---
+  const [portalHeadline, setPortalHeadline] = useState(org.portal_headline || "");
+  const [portalSubtitle, setPortalSubtitle] = useState(org.portal_subtitle || "");
+  const [portalSaving, setPortalSaving] = useState(false);
+  const [portalSaved, setPortalSaved] = useState(false);
+  const [portalLoaded, setPortalLoaded] = useState(false);
+
   // Mark loaded on mount (skip initial auto-save)
   useEffect(() => {
     setProfileLoaded(true);
     setBrandingLoaded(true);
     setInfoLoaded(true);
     setAiLoaded(true);
+    setPortalLoaded(true);
   }, []);
 
   // --- Auto-save: Profile name ---
@@ -191,6 +201,30 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
 
     return () => clearTimeout(timer);
   }, [agentName, greeting, personality, aiLoaded, canEdit]);
+
+  // --- Auto-save: Portal hero ---
+  useEffect(() => {
+    if (!portalLoaded || !canEdit) return;
+
+    setPortalSaved(false);
+    const timer = setTimeout(() => {
+      setPortalSaving(true);
+      fetch("/api/organizations", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portal_headline: portalHeadline || null,
+          portal_subtitle: portalSubtitle || null,
+        }),
+      })
+        .then((res) => {
+          if (res.ok) setPortalSaved(true);
+        })
+        .finally(() => setPortalSaving(false));
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [portalHeadline, portalSubtitle, portalLoaded, canEdit]);
 
   // Logo/favicon callbacks
   const handleLogoUploaded = useCallback((url: string | null) => {
@@ -398,7 +432,37 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
         </div>
       </GlassCard>
 
-      {/* Section 3: AI Agent */}
+      {/* Section 3: Portal Público */}
+      <GlassCard>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-text-primary">
+            Portal público
+          </h2>
+          <SaveIndicator saving={portalSaving} saved={portalSaved} />
+        </div>
+
+        <div className="space-y-4">
+          <GlassInput
+            label="Título principal"
+            placeholder="Ej: Encuentra tu hogar ideal"
+            value={portalHeadline}
+            onChange={(e) => setPortalHeadline(e.target.value)}
+            disabled={!canEdit}
+          />
+          <GlassTextarea
+            label="Descripción"
+            placeholder="Ej: Explora nuestra selección de propiedades o chatea con nuestro agente AI para una búsqueda personalizada."
+            value={portalSubtitle}
+            onChange={(e) => setPortalSubtitle(e.target.value)}
+            disabled={!canEdit}
+          />
+          <div className="p-3 rounded-xl bg-accent-blue/5 border border-accent-blue/20 text-xs text-text-secondary">
+            Estos textos aparecen en la parte superior de tu portal público. Si los dejas vacíos, se usarán los textos predeterminados.
+          </div>
+        </div>
+      </GlassCard>
+
+      {/* Section 4: AI Agent */}
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-text-primary">

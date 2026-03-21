@@ -51,6 +51,10 @@ export async function PUT(request: NextRequest) {
   }
   if (body.agent_language !== undefined) update.agent_language = body.agent_language;
 
+  // Portal
+  if (body.portal_headline !== undefined) update.portal_headline = body.portal_headline;
+  if (body.portal_subtitle !== undefined) update.portal_subtitle = body.portal_subtitle;
+
   // Onboarding
   if (body.onboarding_completed !== undefined) update.onboarding_completed = body.onboarding_completed;
   if (body.onboarding_step !== undefined) update.onboarding_step = body.onboarding_step;
