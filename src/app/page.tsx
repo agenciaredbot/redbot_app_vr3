@@ -823,32 +823,43 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Right: Visual mockup */}
+              {/* Right: Video demo in phone frame */}
               <div className="relative">
                 {/* Phone mockup */}
                 <div className="relative mx-auto w-64 md:w-72">
                   <div className="bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-xl border border-border-glass rounded-[2rem] p-3 shadow-2xl">
-                    <div className="bg-bg-primary rounded-[1.5rem] overflow-hidden aspect-[9/16] flex flex-col items-center justify-center relative">
-                      {/* Play button overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-accent-red/5 via-transparent to-accent-indigo/10" />
-                      <div className="relative flex flex-col items-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-r from-accent-red to-accent-indigo flex items-center justify-center shadow-lg shadow-accent-red/30">
+                    <div className="bg-bg-primary rounded-[1.5rem] overflow-hidden aspect-[9/16] relative group">
+                      {/* Video element */}
+                      <video
+                        className="absolute inset-0 w-full h-full object-cover"
+                        src="/marketing/assets/demo-video-ai.mp4"
+                        playsInline
+                        muted
+                        loop
+                        preload="metadata"
+                        poster=""
+                        onClick={(e) => {
+                          const video = e.currentTarget;
+                          if (video.paused) { video.play(); } else { video.pause(); }
+                        }}
+                      />
+                      {/* Play button overlay — visible when paused (controlled via CSS) */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 transition-opacity group-hover:opacity-100 peer"
+                        onClick={(e) => {
+                          const video = (e.currentTarget as HTMLElement).previousElementSibling as HTMLVideoElement;
+                          if (video) { if (video.paused) { video.play(); (e.currentTarget as HTMLElement).style.opacity = '0'; } else { video.pause(); (e.currentTarget as HTMLElement).style.opacity = '1'; } }
+                        }}
+                      >
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-r from-accent-red to-accent-indigo flex items-center justify-center shadow-lg shadow-accent-red/30 hover:scale-110 transition-transform cursor-pointer">
                           <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M8 5v14l11-7z" />
                           </svg>
                         </div>
-                        <p className="text-xs text-text-muted text-center px-6">
-                          Video generado con IA desde tu propiedad
-                        </p>
-                      </div>
-                      {/* Bottom bar */}
-                      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
-                          <span className="text-[10px] text-white/80">IA Narración activa</span>
-                        </div>
-                        <div className="h-1 bg-white/20 rounded-full overflow-hidden">
-                          <div className="h-full w-2/3 bg-gradient-to-r from-accent-red to-accent-indigo rounded-full" />
+                        {/* Glassmorphism label */}
+                        <div className="mt-4 px-4 py-2 rounded-xl bg-white/[0.08] backdrop-blur-xl border border-white/[0.15] shadow-lg">
+                          <p className="text-xs text-white text-center font-medium">
+                            Video generado con IA desde tu propiedad
+                          </p>
                         </div>
                       </div>
                     </div>
