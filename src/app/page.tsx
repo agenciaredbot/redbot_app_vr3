@@ -741,6 +741,149 @@ export default function HomePage() {
               description="Tu agente IA responde en español, inglés, portugués, francés y más. Detecta el idioma del cliente automáticamente. Ideal para ventas internacionales."
               accent="bg-accent-cyan/10 text-accent-cyan"
             />
+            <FeatureCard
+              icon={icons.play}
+              title="Videos para redes sociales"
+              description="Crea videos de TikTok, Instagram Reels y YouTube Shorts automáticamente desde tus propiedades. Con narración, música y animación. Plan Omni."
+              accent="bg-accent-red/10 text-accent-red"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── VIDEO MARKETING HIGHLIGHT ── */}
+      <section className="py-20 md:py-28 px-6 border-t border-border-glass">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-bg-glass backdrop-blur-xl border border-border-glass rounded-3xl p-8 md:p-12 relative overflow-hidden">
+            {/* Glows */}
+            <div className="absolute -top-24 -left-24 w-72 h-72 bg-accent-red/10 rounded-full blur-[120px]" />
+            <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-accent-indigo/10 rounded-full blur-[120px]" />
+
+            <div className="relative grid md:grid-cols-2 gap-12 items-center">
+              {/* Left: Text */}
+              <div>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold uppercase tracking-widest rounded-full bg-accent-red/10 text-accent-red border border-accent-red/20">
+                  Nuevo — Solo Plan Omni
+                </span>
+                <h2 className="mt-4 text-3xl md:text-4xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
+                  Crea videos virales para{" "}
+                  <span className="bg-gradient-to-r from-accent-red to-accent-indigo bg-clip-text text-transparent">
+                    tus propiedades
+                  </span>
+                </h2>
+                <p className="mt-4 text-text-secondary leading-relaxed">
+                  Transforma las fotos y datos de tus propiedades en videos
+                  profesionales para redes sociales. Sin editar, sin grabar, sin
+                  complicaciones.
+                </p>
+
+                <div className="mt-8 space-y-4">
+                  {[
+                    {
+                      icon: "📱",
+                      text: "Videos para TikTok, Instagram Reels y YouTube Shorts",
+                    },
+                    {
+                      icon: "🎙️",
+                      text: "Narración realista con voces en español",
+                    },
+                    {
+                      icon: "🎵",
+                      text: "Música libre de derechos incluida",
+                    },
+                    {
+                      icon: "✨",
+                      text: "Animación automática de tus fotos",
+                    },
+                    {
+                      icon: "📝",
+                      text: "Guión generado automáticamente desde tu propiedad",
+                    },
+                    {
+                      icon: "📊",
+                      text: "50 videos al mes — 600 al año",
+                    },
+                  ].map((item) => (
+                    <div key={item.text} className="flex items-center gap-3">
+                      <span className="text-lg">{item.icon}</span>
+                      <span className="text-sm text-text-secondary">
+                        {item.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-8">
+                  <a
+                    href="#planes"
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-accent-red to-accent-indigo text-white hover:opacity-90 transition-opacity shadow-lg shadow-accent-red/20"
+                  >
+                    Ver planes y precios
+                  </a>
+                </div>
+              </div>
+
+              {/* Right: Visual mockup */}
+              <div className="relative">
+                {/* Phone mockup */}
+                <div className="relative mx-auto w-64 md:w-72">
+                  <div className="bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-xl border border-border-glass rounded-[2rem] p-3 shadow-2xl">
+                    <div className="bg-bg-primary rounded-[1.5rem] overflow-hidden aspect-[9/16] flex flex-col items-center justify-center relative">
+                      {/* Play button overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-accent-red/5 via-transparent to-accent-indigo/10" />
+                      <div className="relative flex flex-col items-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-r from-accent-red to-accent-indigo flex items-center justify-center shadow-lg shadow-accent-red/30">
+                          <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                        <p className="text-xs text-text-muted text-center px-6">
+                          Video generado con IA desde tu propiedad
+                        </p>
+                      </div>
+                      {/* Bottom bar */}
+                      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
+                          <span className="text-[10px] text-white/80">IA Narración activa</span>
+                        </div>
+                        <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                          <div className="h-full w-2/3 bg-gradient-to-r from-accent-red to-accent-indigo rounded-full" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating platform badges */}
+                <div className="absolute top-4 -left-2 md:-left-8 animate-float-badge-1">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-bg-glass backdrop-blur-xl border border-border-glass shadow-lg">
+                    <svg className="w-4 h-4 text-[#E1306C]" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                    </svg>
+                    <span className="text-[11px] font-medium text-text-primary">Reels</span>
+                  </div>
+                </div>
+
+                <div className="absolute top-1/3 -right-2 md:-right-8 animate-float-badge-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-bg-glass backdrop-blur-xl border border-border-glass shadow-lg">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.88-2.88 2.89 2.89 0 012.88-2.88c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.87a8.28 8.28 0 004.84 1.56V6.96a4.84 4.84 0 01-1.08-.27z"/>
+                    </svg>
+                    <span className="text-[11px] font-medium text-text-primary">TikTok</span>
+                  </div>
+                </div>
+
+                <div className="absolute bottom-8 -left-2 md:-left-8 animate-float-badge-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-bg-glass backdrop-blur-xl border border-border-glass shadow-lg">
+                    <svg className="w-4 h-4 text-[#FF0000]" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    <span className="text-[11px] font-medium text-text-primary">Shorts</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

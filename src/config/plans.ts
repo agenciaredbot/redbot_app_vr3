@@ -75,8 +75,8 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
   omni: {
     name: "Omni",
     tier: "omni",
-    priceCOPCents: 399_000_00, // $399,000 COP
-    priceUSDCents: 100_00, // $100 USD
+    priceCOPCents: 720_000_00, // $720,000 COP
+    priceUSDCents: 180_00, // $180 USD
     trialDays: 0,
     defaultCommissionPercent: 20,
     limits: {

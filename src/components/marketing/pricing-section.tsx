@@ -70,6 +70,9 @@ const planFeatures: Record<PlanTier, string[]> = {
     "Canal WhatsApp 24/7",
     "CRM avanzado: Instagram y Facebook",
     "Publicacion automatica en 10+ portales",
+    "50 videos IA para redes sociales/mes (600/año)",
+    "Narración con voces realistas en español",
+    "Música libre de derechos incluida",
     "Red de oportunidades",
     "Socios de confianza",
     "Tags personalizados",
@@ -83,7 +86,7 @@ const planFeatures: Record<PlanTier, string[]> = {
 const usdEquivalents: Record<PlanTier, { monthly: number; annual: number }> = {
   basic: { monthly: 22, annual: 242 },
   power: { monthly: 50, annual: 550 },
-  omni: { monthly: 100, annual: 1100 },
+  omni: { monthly: 180, annual: 1980 },
 };
 
 const planImages: Record<PlanTier, string> = {
