@@ -829,7 +829,7 @@ export default function HomePage() {
                 <div className="relative mx-auto w-64 md:w-72">
                   <div className="bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-xl border border-border-glass rounded-[2rem] p-3 shadow-2xl">
                     <div className="bg-bg-primary rounded-[1.5rem] overflow-hidden aspect-[9/16] relative group">
-                      {/* Video element */}
+                      {/* Video element — starts muted, unmutes on play */}
                       <video
                         className="absolute inset-0 w-full h-full object-cover"
                         src="/marketing/assets/demo-video-ai.mp4"
@@ -837,17 +837,23 @@ export default function HomePage() {
                         muted
                         loop
                         preload="metadata"
-                        poster=""
-                        onClick={(e) => {
-                          const video = e.currentTarget;
-                          if (video.paused) { video.play(); } else { video.pause(); }
-                        }}
                       />
-                      {/* Play button overlay — visible when paused (controlled via CSS) */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 transition-opacity group-hover:opacity-100 peer"
+                      {/* Play button overlay */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 transition-opacity cursor-pointer"
                         onClick={(e) => {
-                          const video = (e.currentTarget as HTMLElement).previousElementSibling as HTMLVideoElement;
-                          if (video) { if (video.paused) { video.play(); (e.currentTarget as HTMLElement).style.opacity = '0'; } else { video.pause(); (e.currentTarget as HTMLElement).style.opacity = '1'; } }
+                          const overlay = e.currentTarget as HTMLElement;
+                          const video = overlay.previousElementSibling as HTMLVideoElement;
+                          if (!video) return;
+                          if (video.paused) {
+                            video.muted = false;
+                            video.play();
+                            overlay.style.opacity = '0';
+                            overlay.style.pointerEvents = 'none';
+                          } else {
+                            video.pause();
+                            overlay.style.opacity = '1';
+                            overlay.style.pointerEvents = 'auto';
+                          }
                         }}
                       >
                         <div className="w-16 h-16 rounded-full bg-gradient-to-r from-accent-red to-accent-indigo flex items-center justify-center shadow-lg shadow-accent-red/30 hover:scale-110 transition-transform cursor-pointer">
