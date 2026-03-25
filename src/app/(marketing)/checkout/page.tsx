@@ -133,7 +133,16 @@ export default async function CheckoutPage({
     .eq("id", orgId)
     .single();
 
-  if (!org || org.plan_status !== "unpaid") {
+  const allowedForCheckout = ["unpaid", "trialing", "past_due", "canceled"];
+  if (!org || (org.plan_status === "active" && org.plan_tier === planTier)) {
+    return (
+      <CheckoutLayout>
+        <ErrorState message="Este enlace de checkout ya no es válido. Si ya pagaste, verifica tu correo electrónico para acceder a tu cuenta." />
+      </CheckoutLayout>
+    );
+  }
+
+  if (!org || !allowedForCheckout.includes(org.plan_status || "")) {
     return (
       <CheckoutLayout>
         <ErrorState message="Este enlace de checkout ya no es válido. Si ya pagaste, verifica tu correo electrónico para acceder a tu cuenta." />
