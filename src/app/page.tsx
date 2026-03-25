@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PricingSection } from "@/components/marketing/pricing-section";
+import { DemoVideoPlayer } from "@/components/marketing/demo-video-player";
 
 export const metadata: Metadata = {
   title: "Redbot — Tu agente inmobiliario IA, siempre disponible",
@@ -828,47 +829,7 @@ export default function HomePage() {
                 {/* Phone mockup */}
                 <div className="relative mx-auto w-64 md:w-72">
                   <div className="bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-xl border border-border-glass rounded-[2rem] p-3 shadow-2xl">
-                    <div className="bg-bg-primary rounded-[1.5rem] overflow-hidden aspect-[9/16] relative group">
-                      {/* Video element — starts muted, unmutes on play */}
-                      <video
-                        className="absolute inset-0 w-full h-full object-cover"
-                        src="/marketing/assets/demo-video-ai.mp4"
-                        playsInline
-                        muted
-                        loop
-                        preload="metadata"
-                      />
-                      {/* Play button overlay */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 transition-opacity cursor-pointer"
-                        onClick={(e) => {
-                          const overlay = e.currentTarget as HTMLElement;
-                          const video = overlay.previousElementSibling as HTMLVideoElement;
-                          if (!video) return;
-                          if (video.paused) {
-                            video.muted = false;
-                            video.play();
-                            overlay.style.opacity = '0';
-                            overlay.style.pointerEvents = 'none';
-                          } else {
-                            video.pause();
-                            overlay.style.opacity = '1';
-                            overlay.style.pointerEvents = 'auto';
-                          }
-                        }}
-                      >
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-r from-accent-red to-accent-indigo flex items-center justify-center shadow-lg shadow-accent-red/30 hover:scale-110 transition-transform cursor-pointer">
-                          <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        </div>
-                        {/* Glassmorphism label */}
-                        <div className="mt-4 px-4 py-2 rounded-xl bg-white/[0.08] backdrop-blur-xl border border-white/[0.15] shadow-lg">
-                          <p className="text-xs text-white text-center font-medium">
-                            Video generado con IA desde tu propiedad
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    <DemoVideoPlayer />
                   </div>
                 </div>
 
