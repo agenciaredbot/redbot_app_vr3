@@ -133,19 +133,19 @@ export default async function CheckoutPage({
     .eq("id", orgId)
     .single();
 
-  const allowedForCheckout = ["unpaid", "trialing", "past_due", "canceled"];
-  if (!org || (org.plan_status === "active" && org.plan_tier === planTier)) {
+  if (!org) {
     return (
       <CheckoutLayout>
-        <ErrorState message="Este enlace de checkout ya no es válido. Si ya pagaste, verifica tu correo electrónico para acceder a tu cuenta." />
+        <ErrorState message="Organización no encontrada." />
       </CheckoutLayout>
     );
   }
 
-  if (!org || !allowedForCheckout.includes(org.plan_status || "")) {
+  // Only block if org is already active on the SAME plan they're trying to buy
+  if (org.plan_status === "active" && org.plan_tier === planTier) {
     return (
       <CheckoutLayout>
-        <ErrorState message="Este enlace de checkout ya no es válido. Si ya pagaste, verifica tu correo electrónico para acceder a tu cuenta." />
+        <ErrorState message="Ya tienes este plan activo. Si necesitas ayuda, contáctanos." />
       </CheckoutLayout>
     );
   }
