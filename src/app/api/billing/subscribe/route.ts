@@ -38,18 +38,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!payerEmail) {
-    return NextResponse.json(
-      { error: "Email del pagador requerido" },
-      { status: 400 }
-    );
-  }
+  // payerEmail is optional — MP hosted checkout handles email at payment time
+  // This allows customers to pay with any Mercado Pago account
 
   try {
     const result = await subscribe({
       organizationId,
       planTier: planTier as PlanTier,
-      payerEmail,
+      payerEmail: payerEmail || "",
       billingPeriod: billingPeriod || "monthly",
     });
 

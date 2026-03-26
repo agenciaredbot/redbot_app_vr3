@@ -203,7 +203,10 @@ export const mercadopagoProvider: PaymentProvider = {
           },
         }),
       },
-      payer_email: payerEmail,
+      // payer_email is optional for hosted checkout (status: "pending").
+      // When provided, MP pre-fills it but the user can log in with ANY account.
+      // When empty/omitted, MP lets the user choose freely.
+      ...(payerEmail ? { payer_email: payerEmail } : {}),
       external_reference: externalReference,
       back_url: backUrl,
     };
@@ -418,9 +421,8 @@ export const mercadopagoProvider: PaymentProvider = {
           currency_id: "COP",
         },
       ],
-      payer: {
-        email: payerEmail,
-      },
+      // Don't restrict payer email — let buyer use any MP account
+      ...(payerEmail ? { payer: { email: payerEmail } } : {}),
       external_reference: externalReference,
       back_urls: {
         success: backUrls.success,

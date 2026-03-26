@@ -188,7 +188,7 @@ export function BillingPageClient() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             planTier: tier,
-            payerEmail: userEmail || "billing@redbot.app",
+            payerEmail: userEmail || "",
             billingPeriod,
           }),
         });
