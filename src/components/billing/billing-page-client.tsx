@@ -145,7 +145,8 @@ export function BillingPageClient() {
   const handleSubscribe = async (tier: PlanTier) => {
     const isChangePlan =
       billingStatus?.subscription?.status === "active" ||
-      billingStatus?.subscription?.status === "trialing";
+      billingStatus?.subscription?.status === "trialing" ||
+      billingStatus?.subscription?.status === "past_due";
 
     if (isChangePlan) {
       // Change plan — no payment needed, just API call
