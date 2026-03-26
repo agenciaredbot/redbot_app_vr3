@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PropertyDetail } from "@/components/properties/property-detail";
 import { PropertyContextSetter } from "@/components/chat/property-context-setter";
 import { InlineChatWrapper } from "@/components/chat/inline-chat-wrapper";
+import { ContactFormWidget } from "@/components/chat/contact-form-widget";
 import { getI18nText, formatPrice, formatPropertyType } from "@/lib/utils/format";
 
 interface Props {
@@ -59,7 +60,7 @@ export default async function PropertyDetailPage({ params }: Props) {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, slug, agent_name, agent_welcome_message")
+    .select("id, slug, agent_name, agent_welcome_message, plan_tier")
     .eq("slug", slug)
     .single();
 
@@ -97,13 +98,17 @@ export default async function PropertyDetailPage({ params }: Props) {
       />
       <PropertyDetail property={property} />
 
-      {/* AI Agent inline chat */}
+      {/* Chat widget: AI agent for Starter+, contact form for Lite */}
       <div className="mt-8">
-        <InlineChatWrapper
-          organizationSlug={org.slug}
-          agentName={org.agent_name}
-          welcomeMessage={getI18nText(org.agent_welcome_message) || undefined}
-        />
+        {org.plan_tier === "lite" ? (
+          <ContactFormWidget organizationSlug={org.slug} propertyId={property.id} />
+        ) : (
+          <InlineChatWrapper
+            organizationSlug={org.slug}
+            agentName={org.agent_name}
+            welcomeMessage={getI18nText(org.agent_welcome_message) || undefined}
+          />
+        )}
       </div>
     </div>
   );

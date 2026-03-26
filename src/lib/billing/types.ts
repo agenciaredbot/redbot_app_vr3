@@ -3,6 +3,8 @@
  * Supports Mercado Pago (COP) and future Stripe (USD)
  */
 
+import type { PlanTier } from "@/lib/supabase/types";
+
 // ============================================================
 // Provider Types
 // ============================================================
@@ -193,7 +195,7 @@ export interface PaymentProvider {
 
 export interface SubscribeParams {
   organizationId: string;
-  planTier: "basic" | "power" | "omni";
+  planTier: PlanTier;
   /** MP card token — omit for hosted checkout (redirect to MP) */
   cardTokenId?: string;
   /** Payer email */
@@ -214,13 +216,13 @@ export interface SubscribeParams {
 
 export interface ChangePlanParams {
   organizationId: string;
-  newPlanTier: "basic" | "power" | "omni";
+  newPlanTier: PlanTier;
 }
 
 export interface SubscriptionInfo {
   id: string;
   organizationId: string;
-  planTier: "basic" | "power" | "omni";
+  planTier: PlanTier;
   status: SubscriptionStatus;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;

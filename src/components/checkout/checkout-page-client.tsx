@@ -121,7 +121,9 @@ export function CheckoutPageClient({
           </li>
           <li className="flex items-center gap-2">
             <span className="text-accent-green">✓</span>
-            {plan.limits.maxConversationsPerMonth.toLocaleString("es-CO")} conversaciones/mes
+            {plan.limits.maxConversationsPerMonth === 0
+              ? "Formulario de contacto"
+              : `${plan.limits.maxConversationsPerMonth.toLocaleString("es-CO")} conversaciones IA/mes`}
           </li>
         </ul>
       </div>

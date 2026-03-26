@@ -25,7 +25,7 @@ export async function GET() {
   // If RPC doesn't exist, do it manually
   let counts: Record<string, number> = {};
   if (!orgCounts) {
-    for (const tier of ["basic", "power", "omni"]) {
+    for (const tier of ["lite", "basic", "power", "omni"]) {
       const { count } = await supabase
         .from("organizations")
         .select("id", { count: "exact", head: true })
@@ -83,7 +83,7 @@ export async function PUT(request: NextRequest) {
   const body = await request.json();
   const { tier, priceCOPCents, priceUSDCents } = body;
 
-  if (!tier || !["basic", "power", "omni"].includes(tier)) {
+  if (!tier || !["lite", "basic", "power", "omni"].includes(tier)) {
     return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
   }
 

@@ -131,7 +131,8 @@ export function OrganizationsPageClient() {
           className="px-4 py-2.5 rounded-xl bg-white/[0.05] border border-border-glass text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
         >
           <option value="">Todos los planes</option>
-          <option value="basic">Basic</option>
+          <option value="lite">Lite</option>
+          <option value="basic">Starter</option>
           <option value="power">Power</option>
           <option value="omni">Omni</option>
         </select>

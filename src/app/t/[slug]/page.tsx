@@ -4,6 +4,7 @@ import { PropertyFilters } from "@/components/properties/property-filters";
 import { PropertyPagination } from "@/components/properties/property-pagination";
 import { GlassCard } from "@/components/ui/glass-card";
 import { InlineChatWrapper } from "@/components/chat/inline-chat-wrapper";
+import { ContactFormWidget } from "@/components/chat/contact-form-widget";
 import { TenantMaintenancePage } from "@/components/tenant/tenant-maintenance-page";
 import { getI18nText } from "@/lib/utils/format";
 import { PLANS } from "@/config/plans";
@@ -126,13 +127,17 @@ export default async function TenantHomePage({
           <PropertyFilters currentFilters={filters} />
         </GlassCard>
 
-        {/* AI Agent inline chat */}
+        {/* Chat widget: AI agent for Starter+, contact form for Lite */}
         <div className="mb-8">
-          <InlineChatWrapper
-            organizationSlug={org.slug}
-            agentName={org.agent_name}
-            welcomeMessage={getI18nText(org.agent_welcome_message) || undefined}
-          />
+          {org.plan_tier === "lite" ? (
+            <ContactFormWidget organizationSlug={org.slug} />
+          ) : (
+            <InlineChatWrapper
+              organizationSlug={org.slug}
+              agentName={org.agent_name}
+              welcomeMessage={getI18nText(org.agent_welcome_message) || undefined}
+            />
+          )}
         </div>
 
         {!properties || properties.length === 0 ? (

@@ -33,50 +33,59 @@ function CheckItem({ text }: { text: string }) {
 }
 
 const planDescriptions: Record<PlanTier, string> = {
-  basic: "Para empezar a automatizar",
+  lite: "Para empezar con lo esencial",
+  basic: "Para automatizar con IA",
   power: "Para inmobiliarias en crecimiento",
   omni: "Para redes inmobiliarias",
 };
 
 const planFeatures: Record<PlanTier, string[]> = {
-  basic: [
-    "Hasta 50 propiedades",
+  lite: [
+    "Hasta 40 propiedades",
     "2 miembros del equipo",
-    "100 conversaciones/mes",
-    "Agente IA basico",
     "Portal web con subdominio",
     "CRM con pipeline visual",
+    "Formulario de contacto",
+    "Tags personalizados",
+    "Red de oportunidades",
     "Enlaces compartibles",
+  ],
+  basic: [
+    "Propiedades ilimitadas",
+    "4 miembros del equipo",
+    "200 conversaciones IA/mes",
+    "Agente IA basico",
+    "Todo lo de Lite +",
+    "Portal web con subdominio",
+    "CRM con pipeline visual",
+    "Tags personalizados",
+    "Red de oportunidades",
     "Notificaciones por email",
   ],
   power: [
-    "Hasta 200 propiedades",
-    "5 miembros del equipo",
-    "500 conversaciones/mes",
+    "Propiedades ilimitadas",
+    "8 miembros del equipo",
+    "750 conversaciones IA/mes",
     "Agente IA personalizado",
     "Todo lo de Starter +",
     "Canal WhatsApp 24/7",
-    "Red de oportunidades",
-    "Tags personalizados",
     "Exportacion de leads",
+    "Publicacion en portales",
+    "Publicacion en redes sociales",
     "Socios de confianza",
   ],
   omni: [
     "Propiedades ilimitadas",
     "Equipo ilimitado",
-    "2,000 conversaciones/mes",
+    "2,000 conversaciones IA/mes",
     "Herramientas premium de IA",
-    "Agente IA personalizado",
+    "Todo lo de Power +",
     "Canal WhatsApp 24/7",
     "CRM avanzado: Instagram y Facebook",
     "Publicacion automatica en 10+ portales",
-    "50 videos IA para redes sociales/mes (600/año)",
-    "Narración con voces realistas en español",
-    "Música libre de derechos incluida",
-    "Red de oportunidades",
-    "Socios de confianza",
-    "Tags personalizados",
-    "Exportacion de leads",
+    "50 videos IA para redes sociales/mes (600/ano)",
+    "Narracion con voces realistas en espanol",
+    "Musica libre de derechos incluida",
     "Dominio personalizado",
     "Soporte prioritario",
   ],
@@ -84,12 +93,14 @@ const planFeatures: Record<PlanTier, string[]> = {
 
 // USD equivalents for display (approximate)
 const usdEquivalents: Record<PlanTier, { monthly: number; annual: number }> = {
+  lite: { monthly: 9, annual: 99 },
   basic: { monthly: 22, annual: 242 },
   power: { monthly: 50, annual: 550 },
   omni: { monthly: 180, annual: 1980 },
 };
 
 const planImages: Record<PlanTier, string> = {
+  lite: "/redbot-lite.png",
   basic: "/marketing/assets/redbot-starter.png",
   power: "/marketing/assets/redbot-power.png",
   omni: "/marketing/assets/redbot-omni.png",
@@ -102,14 +113,14 @@ interface PricingSectionProps {
 export function PricingSection({ showTrialButton = false }: PricingSectionProps) {
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
   const isAnnual = period === "annual";
-  const tiers: PlanTier[] = ["basic", "power", "omni"];
+  const tiers: PlanTier[] = ["lite", "basic", "power", "omni"];
 
   return (
     <section
       id="planes"
       className="py-20 md:py-28 px-6 border-t border-border-glass"
     >
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="text-center mb-10">
           <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-white/[0.05] text-text-secondary border border-border-glass">
             Planes
@@ -127,7 +138,7 @@ export function PricingSection({ showTrialButton = false }: PricingSectionProps)
           <BillingPeriodToggle value={period} onChange={setPeriod} />
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {tiers.map((tier) => {
             const plan = PLANS[tier];
             const isPower = tier === "power";
@@ -162,10 +173,10 @@ export function PricingSection({ showTrialButton = false }: PricingSectionProps)
                   <Image
                     src={planImages[tier]}
                     alt={`Redbot ${plan.name}`}
-                    width={tier === "basic" ? 90 : 140}
-                    height={tier === "basic" ? 90 : 140}
+                    width={tier === "lite" || tier === "basic" ? 90 : 140}
+                    height={tier === "lite" || tier === "basic" ? 90 : 140}
                     className={`object-contain drop-shadow-lg ${
-                      tier === "basic" ? "w-[90px] h-[90px]" : "w-[140px] h-[140px]"
+                      tier === "lite" || tier === "basic" ? "w-[90px] h-[90px]" : "w-[140px] h-[140px]"
                     }`}
                   />
                 </div>
@@ -175,11 +186,13 @@ export function PricingSection({ showTrialButton = false }: PricingSectionProps)
                     Redbot{" "}
                     <span
                       className={`italic ${
-                        tier === "basic"
-                          ? "text-accent-red"
-                          : tier === "power"
-                            ? "text-accent-purple"
-                            : "text-yellow-400"
+                        tier === "lite"
+                          ? "text-accent-cyan"
+                          : tier === "basic"
+                            ? "text-accent-red"
+                            : tier === "power"
+                              ? "text-accent-purple"
+                              : "text-yellow-400"
                       }`}
                     >
                       {plan.name}
@@ -233,10 +246,10 @@ export function PricingSection({ showTrialButton = false }: PricingSectionProps)
                   Adquirir {plan.name}
                 </Link>
 
-                {/* Trial button — only for Starter on the /pricing page */}
-                {showTrialButton && tier === "basic" && (
+                {/* Trial button — for Lite and Starter on the /pricing page */}
+                {showTrialButton && (tier === "lite" || tier === "basic") && (
                   <Link
-                    href="/register?plan=basic&intent=trial"
+                    href={`/register?plan=${tier}&intent=trial`}
                     className="mt-3 block text-center py-2.5 px-4 rounded-xl text-sm font-medium text-accent-green border border-accent-green/30 hover:bg-accent-green/10 transition-all"
                   >
                     Inicia una prueba gratis (5 dias)

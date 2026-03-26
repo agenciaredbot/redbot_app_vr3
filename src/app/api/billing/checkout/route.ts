@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!planTier || !["basic", "power", "omni"].includes(planTier)) {
+  if (!planTier || !["lite", "basic", "power", "omni"].includes(planTier)) {
     return NextResponse.json(
       { error: "Plan inválido" },
       { status: 400 }

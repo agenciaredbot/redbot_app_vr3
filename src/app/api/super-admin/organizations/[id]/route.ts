@@ -92,9 +92,9 @@ export async function PUT(
   }
 
   // Validate plan_tier
-  if (update.plan_tier && !["basic", "power", "omni"].includes(update.plan_tier)) {
+  if (update.plan_tier && !["lite", "basic", "power", "omni"].includes(update.plan_tier)) {
     return NextResponse.json(
-      { error: "plan_tier debe ser basic, power u omni" },
+      { error: "plan_tier debe ser lite, basic, power u omni" },
       { status: 400 }
     );
   }

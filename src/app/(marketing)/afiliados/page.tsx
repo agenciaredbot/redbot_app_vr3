@@ -313,8 +313,8 @@ export default function AfiliadosPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {(["basic", "power", "omni"] as const).map((tier) => {
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {(["lite", "basic", "power", "omni"] as const).map((tier) => {
               const plan = PLANS[tier];
               const monthlyPrice = plan.priceCOPCents / 100;
               const commission = Math.round(

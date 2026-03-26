@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { planTier, payerEmail, billingPeriod } = body;
 
-  if (!planTier || !["basic", "power", "omni"].includes(planTier)) {
+  if (!planTier || !["lite", "basic", "power", "omni"].includes(planTier)) {
     return NextResponse.json(
-      { error: "Plan inválido. Debe ser 'basic', 'power' o 'omni'" },
+      { error: "Plan inválido. Debe ser 'lite', 'basic', 'power' o 'omni'" },
       { status: 400 }
     );
   }

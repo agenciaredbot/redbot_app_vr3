@@ -24,37 +24,45 @@ interface PlanSelectorProps {
 }
 
 const features: Record<PlanTier, string[]> = {
-  basic: [
-    "Hasta 50 propiedades",
-    "2 agentes",
-    "100 conversaciones/mes",
-    "Personalización básica",
+  lite: [
+    "Hasta 40 propiedades",
+    "2 miembros del equipo",
+    "Formulario de contacto",
     "Portal web con subdominio",
     "CRM con pipeline visual",
+    "Tags personalizados",
+    "Red de oportunidades",
+  ],
+  basic: [
+    "Propiedades ilimitadas",
+    "4 miembros del equipo",
+    "200 conversaciones IA/mes",
+    "Agente IA basico",
+    "Portal web con subdominio",
+    "CRM con pipeline visual",
+    "Tags personalizados",
+    "Red de oportunidades",
   ],
   power: [
-    "Hasta 200 propiedades",
-    "5 agentes",
-    "500 conversaciones/mes",
-    "Personalización completa",
+    "Propiedades ilimitadas",
+    "8 miembros del equipo",
+    "750 conversaciones IA/mes",
+    "Agente IA personalizado",
     "Canal WhatsApp 24/7",
-    "Red de oportunidades",
-    "Tags personalizados",
     "Exportar leads",
+    "Publicacion en portales",
+    "Publicacion en redes sociales",
     "Socios de confianza",
   ],
   omni: [
     "Propiedades ilimitadas",
-    "Agentes ilimitados",
-    "2,000 conversaciones/mes",
+    "Equipo ilimitado",
+    "2,000 conversaciones IA/mes",
     "Herramientas premium de IA",
     "Agente IA personalizado",
     "Canal WhatsApp 24/7",
     "CRM avanzado: Instagram y Facebook",
-    "Publicación en 10+ portales",
-    "Red de oportunidades",
-    "Socios de confianza",
-    "Exportar leads",
+    "Publicacion en 10+ portales",
     "Dominio personalizado",
     "Soporte prioritario",
   ],
@@ -69,7 +77,7 @@ export function PlanSelector({
   loading,
   disabled,
 }: PlanSelectorProps) {
-  const tiers: PlanTier[] = ["basic", "power", "omni"];
+  const tiers: PlanTier[] = ["lite", "basic", "power", "omni"];
   const isAnnual = billingPeriod === "annual";
 
   return (
@@ -77,7 +85,7 @@ export function PlanSelector({
       {/* Toggle Mensual / Anual */}
       <BillingPeriodToggle value={billingPeriod} onChange={onPeriodChange} />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {tiers.map((tier) => {
           const plan = PLANS[tier];
           const isCurrent = tier === currentTier;

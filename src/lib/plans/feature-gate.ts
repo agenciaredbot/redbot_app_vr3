@@ -129,7 +129,8 @@ export type FeatureFlag =
   | "portalSyndication"
   | "opportunitiesNetwork"
   | "socialPublishing"
-  | "videoCreation";
+  | "videoCreation"
+  | "aiAgent";
 
 interface FeatureFlagDefinition {
   /** Key in PlanDefinition.limits to check */
@@ -147,7 +148,7 @@ const FEATURE_REGISTRY: Record<FeatureFlag, FeatureFlagDefinition> = {
     planKey: "customTags",
     enabledValue: true,
     label: "etiquetas personalizadas",
-    requiredPlan: "power",
+    requiredPlan: "lite",
   },
   exportLeads: {
     planKey: "exportLeads",
@@ -183,7 +184,7 @@ const FEATURE_REGISTRY: Record<FeatureFlag, FeatureFlagDefinition> = {
     planKey: "opportunitiesNetwork",
     enabledValue: true,
     label: "red de oportunidades (búsqueda activa)",
-    requiredPlan: "power",
+    requiredPlan: "lite",
   },
   socialPublishing: {
     planKey: "socialPublishing",
@@ -196,6 +197,12 @@ const FEATURE_REGISTRY: Record<FeatureFlag, FeatureFlagDefinition> = {
     enabledValue: true,
     label: "creación de videos con IA",
     requiredPlan: "omni",
+  },
+  aiAgent: {
+    planKey: "aiAgent",
+    enabledValue: true,
+    label: "agente IA",
+    requiredPlan: "basic",
   },
 };
 

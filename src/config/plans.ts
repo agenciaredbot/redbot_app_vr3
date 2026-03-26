@@ -24,10 +24,34 @@ export interface PlanDefinition {
     opportunitiesNetwork: boolean;
     socialPublishing: boolean;
     videoCreation: boolean;
+    aiAgent: boolean;
   };
 }
 
 export const PLANS: Record<PlanTier, PlanDefinition> = {
+  lite: {
+    name: "Lite",
+    tier: "lite",
+    priceCOPCents: 29_000_00, // $29,000 COP
+    priceUSDCents: 9_00, // $9 USD
+    trialDays: 5,
+    defaultCommissionPercent: 10,
+    limits: {
+      maxProperties: 40,
+      maxAgents: 2,
+      maxConversationsPerMonth: 0,
+      customTags: true,
+      agentCustomization: "basic",
+      exportLeads: false,
+      customDomain: false,
+      whatsappChannel: false,
+      portalSyndication: false,
+      opportunitiesNetwork: true,
+      socialPublishing: false,
+      videoCreation: false,
+      aiAgent: false,
+    },
+  },
   basic: {
     name: "Starter",
     tier: "basic",
@@ -36,18 +60,19 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     trialDays: 5,
     defaultCommissionPercent: 10,
     limits: {
-      maxProperties: 50,
-      maxAgents: 2,
-      maxConversationsPerMonth: 100,
-      customTags: false,
+      maxProperties: -1,
+      maxAgents: 4,
+      maxConversationsPerMonth: 200,
+      customTags: true,
       agentCustomization: "basic",
       exportLeads: false,
       customDomain: false,
       whatsappChannel: false,
       portalSyndication: false,
-      opportunitiesNetwork: false,
+      opportunitiesNetwork: true,
       socialPublishing: false,
       videoCreation: false,
+      aiAgent: true,
     },
   },
   power: {
@@ -58,9 +83,9 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     trialDays: 0,
     defaultCommissionPercent: 15,
     limits: {
-      maxProperties: 200,
-      maxAgents: 5,
-      maxConversationsPerMonth: 500,
+      maxProperties: -1,
+      maxAgents: 8,
+      maxConversationsPerMonth: 750,
       customTags: true,
       agentCustomization: "full",
       exportLeads: true,
@@ -70,6 +95,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       opportunitiesNetwork: true,
       socialPublishing: true,
       videoCreation: false,
+      aiAgent: true,
     },
   },
   omni: {
@@ -92,6 +118,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       opportunitiesNetwork: true,
       socialPublishing: true,
       videoCreation: true,
+      aiAgent: true,
     },
   },
 };
@@ -100,7 +127,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
 // Trial eligibility — only Starter (basic) gets a free trial
 // ============================================================
 
-export const TRIAL_ELIGIBLE_TIERS: PlanTier[] = ["basic"];
+export const TRIAL_ELIGIBLE_TIERS: PlanTier[] = ["lite", "basic"];
 
 export function isTrialEligible(tier: PlanTier): boolean {
   return TRIAL_ELIGIBLE_TIERS.includes(tier);

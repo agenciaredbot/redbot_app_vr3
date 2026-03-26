@@ -26,7 +26,7 @@ export const registerSchema = z.object({
       /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s\-&.,']+$/,
       "El nombre contiene caracteres no permitidos"
     ),
-  planTier: z.enum(["basic", "power", "omni"]).optional().default("basic"),
+  planTier: z.enum(["lite", "basic", "power", "omni"]).optional().default("basic"),
   intent: z.enum(["buy", "trial"]).optional().default("trial"),
   /** Honeypot field — must be empty for legitimate submissions */
   website: z.string().max(0, "").optional().default(""),

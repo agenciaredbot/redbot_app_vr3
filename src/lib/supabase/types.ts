@@ -135,7 +135,7 @@ export type BusinessType = "venta" | "arriendo" | "venta_arriendo";
 
 export type Availability = "disponible" | "vendido" | "arrendado" | "reservado";
 
-export type PlanTier = "basic" | "power" | "omni";
+export type PlanTier = "lite" | "basic" | "power" | "omni";
 
 export type I18nText = {
   es: string;

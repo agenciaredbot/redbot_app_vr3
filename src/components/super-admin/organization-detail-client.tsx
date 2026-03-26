@@ -405,7 +405,8 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
                     onChange={(e) => handlePlanTierChange(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl bg-white/[0.05] border border-border-glass text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/50"
                   >
-                    <option value="basic">Basic</option>
+                    <option value="lite">Lite</option>
+                    <option value="basic">Starter</option>
                     <option value="power">Power</option>
                     <option value="omni">Omni</option>
                   </select>
@@ -511,7 +512,7 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
                   <h4 className="text-sm font-medium text-text-primary mb-1">Activar demo</h4>
                   <p className="text-xs text-text-muted mb-3">Trial gratuito con fecha de expiración</p>
                   <div className="flex flex-wrap gap-2">
-                    {(["basic", "power", "omni"] as PlanTier[]).map((tier) => (
+                    {(["lite", "basic", "power", "omni"] as PlanTier[]).map((tier) => (
                       <div key={tier} className="flex gap-1">
                         <button
                           onClick={() => handleActivateDemo(tier, 15)}
@@ -537,7 +538,7 @@ export function OrganizationDetailClient({ orgId }: { orgId: string }) {
                   <h4 className="text-sm font-medium text-text-primary mb-1">Upgrade gratis</h4>
                   <p className="text-xs text-text-muted mb-3">Plan activo sin pago ni expiración</p>
                   <div className="flex flex-wrap gap-2">
-                    {(["basic", "power", "omni"] as PlanTier[]).map((tier) => (
+                    {(["lite", "basic", "power", "omni"] as PlanTier[]).map((tier) => (
                       <button
                         key={tier}
                         onClick={() => handleFreeUpgrade(tier)}

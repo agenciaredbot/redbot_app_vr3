@@ -55,8 +55,8 @@ export function AffiliateActivationCta({ userRole, hasOrg }: Props) {
         </p>
 
         {/* Commission rates */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {(["basic", "power", "omni"] as const).map((tier) => (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {(["lite", "basic", "power", "omni"] as const).map((tier) => (
             <div
               key={tier}
               className="backdrop-blur-xl bg-white/[0.03] border border-border-glass rounded-xl p-4"

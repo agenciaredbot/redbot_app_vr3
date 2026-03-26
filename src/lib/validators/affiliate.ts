@@ -23,7 +23,7 @@ export const affiliateProfileUpdateSchema = z.object({
 export const commissionRateUpdateSchema = z.object({
   rates: z.array(
     z.object({
-      plan_tier: z.enum(["basic", "power", "omni"]),
+      plan_tier: z.enum(["lite", "basic", "power", "omni"]),
       commission_percent: z.number().min(0).max(100),
     })
   ),
