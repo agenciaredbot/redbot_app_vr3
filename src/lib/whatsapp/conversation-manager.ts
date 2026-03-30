@@ -8,7 +8,7 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import type Anthropic from "@anthropic-ai/sdk";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 interface ConversationRecord {
   id: string;
@@ -102,7 +102,7 @@ export async function findOrCreateConversation(
 export async function loadConversationHistory(
   conversationId: string,
   limit: number = 20
-): Promise<Anthropic.MessageParam[]> {
+): Promise<ChatCompletionMessageParam[]> {
   const supabase = createAdminClient();
 
   const { data: messages, error } = await supabase
@@ -125,7 +125,7 @@ export async function loadConversationHistory(
 
   // Convert DB messages to Anthropic format
   // Only include user and assistant messages with non-empty string content
-  const anthropicMessages: Anthropic.MessageParam[] = [];
+  const anthropicMessages: ChatCompletionMessageParam[] = [];
 
   for (const msg of messages) {
     if ((msg.role === "user" || msg.role === "assistant") && msg.content && msg.content.trim()) {
@@ -138,7 +138,7 @@ export async function loadConversationHistory(
 
   // Ensure messages alternate correctly (user, assistant, user, assistant...)
   // When consecutive same-role messages exist, merge them or keep the last one
-  const cleaned: Anthropic.MessageParam[] = [];
+  const cleaned: ChatCompletionMessageParam[] = [];
   for (const msg of anthropicMessages) {
     if (cleaned.length === 0 || cleaned[cleaned.length - 1].role !== msg.role) {
       cleaned.push(msg);

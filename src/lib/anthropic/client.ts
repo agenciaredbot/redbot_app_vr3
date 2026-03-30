@@ -1,12 +1,24 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-let client: Anthropic | null = null;
+let client: OpenAI | null = null;
 
-export function getAnthropicClient(): Anthropic {
+/**
+ * Get the shared OpenAI-compatible client configured for OpenRouter.
+ * Singleton pattern — one instance reused across all routes.
+ */
+export function getAIClient(): OpenAI {
   if (!client) {
-    client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY!,
+    client = new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY!,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: {
+        "HTTP-Referer": "https://redbot.app",
+        "X-Title": "Redbot",
+      },
     });
   }
   return client;
 }
+
+/** Model ID for OpenRouter — change this to switch models */
+export const AI_MODEL = "anthropic/claude-sonnet-4.5";

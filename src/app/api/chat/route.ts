@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
-import { getAnthropicClient } from "@/lib/anthropic/client";
+import { getAIClient, AI_MODEL } from "@/lib/anthropic/client";
 import { buildSystemPrompt } from "@/lib/anthropic/agent-system-prompt";
 import { agentTools } from "@/lib/anthropic/tools";
 import { handleToolCall } from "@/lib/anthropic/tool-handlers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkLimit, incrementConversationCountDirect } from "@/lib/plans/feature-gate";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
-import type Anthropic from "@anthropic-ai/sdk";
+import { UsageAccumulator } from "@/lib/anthropic/ai-usage-tracker";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 export const maxDuration = 60;
 
@@ -75,15 +76,19 @@ El visitante está viendo la página de esta propiedad: "${propertyContext.title
 Si el visitante pregunta sobre "esta propiedad", "este inmueble", o hace preguntas sin especificar cuál, asume que se refiere a esta propiedad. Usa get_property_details con property_id "${propertyContext.id}" para obtener la información completa. No necesitas buscar — ya sabes de cuál propiedad habla.`;
     }
 
-    const anthropic = getAnthropicClient();
+    const ai = getAIClient();
 
-    // Convert messages to Anthropic format
-    const anthropicMessages: Anthropic.MessageParam[] = messages.map(
-      (msg: { role: string; content: string }) => ({
+    // Convert messages to OpenAI format with system prompt
+    const openaiMessages: ChatCompletionMessageParam[] = [
+      { role: "system", content: systemPrompt },
+      ...messages.map((msg: { role: string; content: string }) => ({
         role: msg.role as "user" | "assistant",
         content: msg.content,
-      })
-    );
+      })),
+    ];
+
+    // Usage tracker for this conversation turn
+    const usage = new UsageAccumulator(AI_MODEL, org.id, "web");
 
     // Create streaming response with tool-calling loop
     const encoder = new TextEncoder();
@@ -95,7 +100,7 @@ Si el visitante pregunta sobre "esta propiedad", "este inmueble", o hace pregunt
           );
         };
 
-        let currentMessages = [...anthropicMessages];
+        let currentMessages = [...openaiMessages];
         let loopCount = 0;
         const maxLoops = 5; // prevent infinite tool loops
 
@@ -103,86 +108,120 @@ Si el visitante pregunta sobre "esta propiedad", "este inmueble", o hace pregunt
           while (loopCount < maxLoops) {
             loopCount++;
 
-            const response = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250929",
+            // Stream the response
+            const response = await ai.chat.completions.create({
+              model: AI_MODEL,
               max_tokens: 1024,
-              system: systemPrompt,
               messages: currentMessages,
               tools: agentTools,
               stream: true,
+              stream_options: { include_usage: true },
             });
 
             let currentText = "";
-            let toolUseBlocks: Anthropic.ContentBlock[] = [];
-            let stopReason: string | null = null;
+            let finishReason: string | null = null;
+            // Accumulate tool calls from stream deltas
+            const toolCallAccum: Record<number, { id: string; name: string; arguments: string }> = {};
+            let streamUsage: { prompt_tokens?: number; completion_tokens?: number } = {};
 
-            for await (const event of response) {
-              if (event.type === "content_block_delta") {
-                const delta = event.delta;
-                if ("text" in delta && delta.text) {
-                  currentText += delta.text;
-                  send("text", { text: delta.text });
+            for await (const chunk of response) {
+              const choice = chunk.choices[0];
+
+              // Usage comes in the final chunk
+              if (chunk.usage) {
+                streamUsage = {
+                  prompt_tokens: chunk.usage.prompt_tokens,
+                  completion_tokens: chunk.usage.completion_tokens,
+                };
+              }
+
+              if (!choice) continue;
+
+              const delta = choice.delta;
+
+              // Text content
+              if (delta?.content) {
+                currentText += delta.content;
+                send("text", { text: delta.content });
+              }
+
+              // Tool calls (streamed incrementally)
+              if (delta?.tool_calls) {
+                for (const tc of delta.tool_calls) {
+                  const idx = tc.index;
+                  if (!toolCallAccum[idx]) {
+                    toolCallAccum[idx] = { id: "", name: "", arguments: "" };
+                  }
+                  if (tc.id) {
+                    toolCallAccum[idx].id = tc.id;
+                  }
+                  if (tc.function?.name) {
+                    toolCallAccum[idx].name = tc.function.name;
+                    send("tool_use_start", { name: tc.function.name });
+                  }
+                  if (tc.function?.arguments) {
+                    toolCallAccum[idx].arguments += tc.function.arguments;
+                  }
                 }
-              } else if (event.type === "content_block_start") {
-                if (event.content_block.type === "tool_use") {
-                  send("tool_use_start", {
-                    name: event.content_block.name,
-                  });
-                }
-              } else if (event.type === "message_delta") {
-                stopReason = event.delta.stop_reason;
-              } else if (event.type === "message_stop") {
-                // Collect tool_use blocks from the message
-                // We need to reconstruct them from the stream events
+              }
+
+              if (choice.finish_reason) {
+                finishReason = choice.finish_reason;
               }
             }
 
-            // If stop_reason is "tool_use", we need to handle tool calls
-            if (stopReason === "tool_use") {
-              // Re-create the message non-streaming to get proper tool blocks
-              const fullResponse = await anthropic.messages.create({
-                model: "claude-sonnet-4-5-20250929",
-                max_tokens: 1024,
-                system: systemPrompt,
-                messages: currentMessages,
-                tools: agentTools,
-              });
+            // Track usage for this API call
+            usage.add(
+              streamUsage.prompt_tokens || 0,
+              streamUsage.completion_tokens || 0
+            );
 
-              toolUseBlocks = fullResponse.content.filter(
-                (block) => block.type === "tool_use"
-              );
+            // If tool calls were made, execute them
+            const toolCalls = Object.values(toolCallAccum).filter((tc) => tc.id && tc.name);
 
-              // Build assistant message with full content
+            if (finishReason === "tool_calls" && toolCalls.length > 0) {
+              // Build assistant message with tool_calls
               currentMessages.push({
                 role: "assistant",
-                content: fullResponse.content,
+                content: currentText || null,
+                tool_calls: toolCalls.map((tc) => ({
+                  id: tc.id,
+                  type: "function" as const,
+                  function: {
+                    name: tc.name,
+                    arguments: tc.arguments,
+                  },
+                })),
               });
 
-              // Execute tools and add results
-              const toolResults: Anthropic.ToolResultBlockParam[] = [];
-              for (const block of toolUseBlocks) {
-                if (block.type === "tool_use") {
-                  send("tool_result_start", { name: block.name });
-                  const result = await handleToolCall(
-                    block.name,
-                    block.input as Record<string, unknown>,
-                    org.id,
-                    conversationId,
-                    org.slug
-                  );
-                  toolResults.push({
-                    type: "tool_result",
-                    tool_use_id: block.id,
-                    content: result,
-                  });
-                  send("tool_result_end", { name: block.name });
+              // Execute each tool and add results
+              for (const tc of toolCalls) {
+                send("tool_result_start", { name: tc.name });
+                usage.addTool(tc.name);
+
+                let toolInput: Record<string, unknown>;
+                try {
+                  toolInput = JSON.parse(tc.arguments);
+                } catch {
+                  toolInput = {};
                 }
-              }
 
-              currentMessages.push({
-                role: "user",
-                content: toolResults,
-              });
+                const result = await handleToolCall(
+                  tc.name,
+                  toolInput,
+                  org.id,
+                  conversationId,
+                  org.slug
+                );
+
+                currentMessages.push({
+                  role: "tool",
+                  tool_call_id: tc.id,
+                  content: result,
+                });
+
+                send("tool_result_end", { name: tc.name });
+              }
 
               // Continue the loop to get the next response
               continue;
@@ -193,6 +232,9 @@ Si el visitante pregunta sobre "esta propiedad", "este inmueble", o hace pregunt
           }
 
           send("done", {});
+
+          // Flush usage tracking (fire and forget)
+          usage.flush().catch(console.error);
 
           // Persist conversation to DB (fire and forget)
           if (conversationId) {
@@ -228,7 +270,7 @@ Si el visitante pregunta sobre "esta propiedad", "este inmueble", o hace pregunt
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function persistMessages(supabase: any, conversationId: string, messages: Anthropic.MessageParam[]) {
+async function persistMessages(supabase: any, conversationId: string, messages: ChatCompletionMessageParam[]) {
   // Only persist the last user message and assistant response
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user" && typeof m.content === "string");
   const lastAssistantMsg = [...messages].reverse().find(

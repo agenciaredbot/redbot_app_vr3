@@ -1,23 +1,24 @@
 /**
- * Shared message processing function for Claude AI agent.
+ * Shared message processing function for AI agent.
  *
  * Used by both:
  * - Web chat (SSE streaming — calls this for tool resolution)
  * - WhatsApp webhook (synchronous — full response at once)
  *
- * Handles the tool-calling loop: sends messages to Claude,
+ * Handles the tool-calling loop: sends messages to the AI,
  * executes tool calls, and returns the final response.
  */
 
-import { getAnthropicClient } from "./client";
+import { getAIClient, AI_MODEL } from "./client";
 import { buildSystemPrompt } from "./agent-system-prompt";
 import { agentTools } from "./tools";
 import { handleToolCall } from "./tool-handlers";
-import type Anthropic from "@anthropic-ai/sdk";
+import { UsageAccumulator } from "./ai-usage-tracker";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 export interface ProcessMessageParams {
-  /** Conversation messages in Anthropic format */
-  messages: Anthropic.MessageParam[];
+  /** Conversation messages in OpenAI format */
+  messages: ChatCompletionMessageParam[];
   /** Organization ID for scoping data access */
   organizationId: string;
   /** Organization slug for building URLs */
@@ -45,13 +46,13 @@ export interface ProcessMessageResult {
   /** Final text response from the AI */
   responseText: string;
   /** All messages including tool calls/results (for persistence) */
-  allMessages: Anthropic.MessageParam[];
+  allMessages: ChatCompletionMessageParam[];
   /** Names of tools that were used */
   toolsUsed: string[];
 }
 
 /**
- * Process a message through Claude with tool-calling loop.
+ * Process a message through the AI with tool-calling loop.
  * Non-streaming — returns the complete response.
  *
  * Max 5 tool-call iterations to prevent infinite loops.
@@ -69,7 +70,7 @@ export async function processMessage(
     channelContext,
   } = params;
 
-  const anthropic = getAnthropicClient();
+  const ai = getAIClient();
 
   // Build system prompt with channel-specific instructions
   let systemPrompt = buildSystemPrompt(orgContext);
@@ -85,85 +86,100 @@ Estás respondiendo por WhatsApp. Reglas adicionales:
 - El número de teléfono del usuario es: ${channelContext?.phone || "desconocido"}. Úsalo automáticamente al registrar leads.`;
   }
 
-  let currentMessages = [...messages];
+  // Build messages with system prompt
+  let currentMessages: ChatCompletionMessageParam[] = [
+    { role: "system", content: systemPrompt },
+    ...messages,
+  ];
   let loopCount = 0;
   const maxLoops = 5;
   const toolsUsed: string[] = [];
   let finalText = "";
 
+  // Usage tracker
+  const usage = new UsageAccumulator(AI_MODEL, organizationId, channel);
+
   while (loopCount < maxLoops) {
     loopCount++;
 
-    console.log(`[processMessage] Loop ${loopCount}/${maxLoops}: sending ${currentMessages.length} messages to Claude (channel=${channel})`);
+    console.log(`[processMessage] Loop ${loopCount}/${maxLoops}: sending ${currentMessages.length} messages (channel=${channel})`);
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+    const response = await ai.chat.completions.create({
+      model: AI_MODEL,
       max_tokens: channel === "whatsapp" ? 512 : 1024,
-      system: systemPrompt,
       messages: currentMessages,
       tools: agentTools,
     });
 
-    console.log(`[processMessage] Loop ${loopCount}: stop_reason=${response.stop_reason}, content_blocks=${response.content.length}, usage=${JSON.stringify(response.usage)}`);
+    const choice = response.choices[0];
+    const responseMessage = choice.message;
 
-    // Extract text and tool_use blocks
-    const textBlocks = response.content.filter((b) => b.type === "text");
-    const toolBlocks = response.content.filter((b) => b.type === "tool_use");
+    // Track usage
+    usage.add(
+      response.usage?.prompt_tokens || 0,
+      response.usage?.completion_tokens || 0
+    );
 
-    // Accumulate text
-    finalText = textBlocks.map((b) => ("text" in b ? b.text : "")).join("");
+    console.log(`[processMessage] Loop ${loopCount}: finish_reason=${choice.finish_reason}, usage=${JSON.stringify(response.usage)}`);
 
-    if (response.stop_reason === "tool_use" && toolBlocks.length > 0) {
-      console.log(`[processMessage] Loop ${loopCount}: executing ${toolBlocks.length} tool(s): ${toolBlocks.map(b => b.type === "tool_use" ? b.name : "?").join(", ")}`);
+    // Extract text
+    finalText = responseMessage.content || "";
 
-      // Add assistant message with full content (text + tool_use)
+    // Check for tool calls
+    if (choice.finish_reason === "tool_calls" && responseMessage.tool_calls?.length) {
+      const fnToolCalls = responseMessage.tool_calls.filter(
+        (tc): tc is Extract<typeof tc, { type: "function" }> => tc.type === "function"
+      );
+      console.log(`[processMessage] Loop ${loopCount}: executing ${fnToolCalls.length} tool(s): ${fnToolCalls.map(tc => tc.function.name).join(", ")}`);
+
+      // Add assistant message with tool_calls
       currentMessages.push({
         role: "assistant",
-        content: response.content,
+        content: responseMessage.content || null,
+        tool_calls: responseMessage.tool_calls,
       });
 
       // Execute each tool
-      const toolResults: Anthropic.ToolResultBlockParam[] = [];
-      for (const block of toolBlocks) {
-        if (block.type === "tool_use") {
-          toolsUsed.push(block.name);
+      for (const toolCall of fnToolCalls) {
+        const toolName = toolCall.function.name;
+        toolsUsed.push(toolName);
+        usage.addTool(toolName);
 
-          try {
-            const result = await handleToolCall(
-              block.name,
-              block.input as Record<string, unknown>,
-              organizationId,
-              conversationId,
-              orgSlug,
-              channelContext ? { channel, phone: channelContext.phone } : undefined
-            );
+        let toolInput: Record<string, unknown>;
+        try {
+          toolInput = JSON.parse(toolCall.function.arguments);
+        } catch {
+          toolInput = {};
+        }
 
-            console.log(`[processMessage] Tool ${block.name}: result (${result.length} chars)`);
+        try {
+          const result = await handleToolCall(
+            toolName,
+            toolInput,
+            organizationId,
+            conversationId,
+            orgSlug,
+            channelContext ? { channel, phone: channelContext.phone } : undefined
+          );
 
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: block.id,
-              content: result,
-            });
-          } catch (toolErr) {
-            console.error(`[processMessage] Tool ${block.name} ERROR:`, toolErr instanceof Error ? toolErr.message : toolErr);
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: block.id,
-              content: JSON.stringify({ error: `Tool execution failed: ${toolErr instanceof Error ? toolErr.message : "unknown error"}` }),
-              is_error: true,
-            });
-          }
+          console.log(`[processMessage] Tool ${toolName}: result (${result.length} chars)`);
+
+          currentMessages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: result,
+          });
+        } catch (toolErr) {
+          console.error(`[processMessage] Tool ${toolName} ERROR:`, toolErr instanceof Error ? toolErr.message : toolErr);
+          currentMessages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({ error: `Tool execution failed: ${toolErr instanceof Error ? toolErr.message : "unknown error"}` }),
+          });
         }
       }
 
-      // Add tool results as user message
-      currentMessages.push({
-        role: "user",
-        content: toolResults,
-      });
-
-      // Continue loop — Claude will process tool results
+      // Continue loop — AI will process tool results
       continue;
     }
 
@@ -171,6 +187,9 @@ Estás respondiendo por WhatsApp. Reglas adicionales:
     console.log(`[processMessage] Done after ${loopCount} loop(s). Response: ${finalText.length} chars`);
     break;
   }
+
+  // Flush usage tracking (fire and forget)
+  usage.flush().catch(console.error);
 
   return {
     responseText: finalText,

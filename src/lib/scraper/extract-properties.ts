@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { getAnthropicClient } from "@/lib/anthropic/client";
+import { getAIClient, AI_MODEL } from "@/lib/anthropic/client";
 import { generateUniqueSlug } from "@/lib/utils/slug";
 import {
   normalizePropertyType,
@@ -345,13 +345,13 @@ export async function extractWithClaude(
   pageNumber: number,
   pageImages: string[] = []
 ): Promise<ExtractionResult> {
-  const anthropic = getAnthropicClient();
+  const ai = getAIClient();
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+  const response = await ai.chat.completions.create({
+    model: AI_MODEL,
     max_tokens: 16384,
-    system: EXTRACTION_SYSTEM_PROMPT,
     messages: [
+      { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
       {
         role: "user",
         content: buildExtractionPrompt(text, url, pageNumber, pageImages),
@@ -360,13 +360,7 @@ export async function extractWithClaude(
   });
 
   // Extract text from response
-  const responseText = response.content
-    .filter((block) => block.type === "text")
-    .map((block) => {
-      if (block.type === "text") return block.text;
-      return "";
-    })
-    .join("");
+  const responseText = response.choices[0]?.message?.content || "";
 
   // Parse JSON (handle potential markdown code fences)
   const jsonStr = responseText
