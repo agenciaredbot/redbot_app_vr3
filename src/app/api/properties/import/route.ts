@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { checkLimit } from "@/lib/plans/feature-gate";
 import {
   parseExcelBuffer,
@@ -14,7 +14,8 @@ export async function POST(request: NextRequest) {
     allowedRoles: ["super_admin", "org_admin"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { supabase, organizationId } = authResult;
+  const { organizationId } = authResult;
+  const supabase = createAdminClient();
 
   try {
     // Check plan limit before processing import
@@ -242,7 +243,7 @@ export async function POST(request: NextRequest) {
  * If a batch fails, retry each row individually to isolate the bad row.
  */
 async function batchInsertWithFallback(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createAdminClient>,
   properties: Record<string, unknown>[]
 ): Promise<{
   insertedCount: number;
