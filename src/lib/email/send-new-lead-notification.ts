@@ -32,11 +32,11 @@ export async function sendNewLeadNotification(
   try {
     const adminClient = createAdminClient();
 
-    // Fetch organization name and slug in parallel with admin emails
+    // Fetch organization name, slug and notification preference in parallel with admin emails
     const [orgResult, adminsResult] = await Promise.all([
       adminClient
         .from("organizations")
-        .select("name, slug")
+        .select("name, slug, notify_new_leads")
         .eq("id", organizationId)
         .single(),
       adminClient
@@ -51,6 +51,14 @@ export async function sendNewLeadNotification(
       console.error(
         "[Email] Error fetching organization:",
         orgResult.error?.message
+      );
+      return;
+    }
+
+    // Check if org has disabled lead email notifications
+    if (orgResult.data.notify_new_leads === false) {
+      console.log(
+        `[Email] Lead notifications disabled for org ${organizationId}, skipping.`
       );
       return;
     }

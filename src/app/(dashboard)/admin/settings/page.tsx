@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   const { data: org } = await supabase
     .from("organizations")
     .select(
-      "id, name, slug, city, phone, email, logo_url, favicon_url, logo_light_url, theme_mode, primary_color, secondary_color, agent_name, agent_personality, agent_welcome_message, agent_language, portal_headline, portal_subtitle, plan_tier, plan_status, max_properties, max_conversations_per_month, conversations_used_this_month"
+      "id, name, slug, city, phone, email, logo_url, favicon_url, logo_light_url, theme_mode, primary_color, secondary_color, agent_name, agent_personality, agent_welcome_message, agent_language, portal_headline, portal_subtitle, notify_new_leads, plan_tier, plan_status, max_properties, max_conversations_per_month, conversations_used_this_month"
     )
     .eq("id", organizationId)
     .single();

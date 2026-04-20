@@ -27,6 +27,7 @@ interface Organization {
   agent_language: string | null;
   portal_headline: string | null;
   portal_subtitle: string | null;
+  notify_new_leads: boolean;
   plan_tier: string;
   plan_status: string;
   max_properties: number;
@@ -94,6 +95,12 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
   const [portalSaved, setPortalSaved] = useState(false);
   const [portalLoaded, setPortalLoaded] = useState(false);
 
+  // --- Notifications state ---
+  const [notifyNewLeads, setNotifyNewLeads] = useState(org.notify_new_leads);
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifSaved, setNotifSaved] = useState(false);
+  const [notifLoaded, setNotifLoaded] = useState(false);
+
   // Mark loaded on mount (skip initial auto-save)
   useEffect(() => {
     setProfileLoaded(true);
@@ -101,6 +108,7 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
     setInfoLoaded(true);
     setAiLoaded(true);
     setPortalLoaded(true);
+    setNotifLoaded(true);
   }, []);
 
   // --- Auto-save: Profile name ---
@@ -225,6 +233,27 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
 
     return () => clearTimeout(timer);
   }, [portalHeadline, portalSubtitle, portalLoaded, canEdit]);
+
+  // --- Auto-save: Notifications ---
+  useEffect(() => {
+    if (!notifLoaded || !canEdit) return;
+
+    setNotifSaved(false);
+    const timer = setTimeout(() => {
+      setNotifSaving(true);
+      fetch("/api/organizations", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notify_new_leads: notifyNewLeads }),
+      })
+        .then((res) => {
+          if (res.ok) setNotifSaved(true);
+        })
+        .finally(() => setNotifSaving(false));
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [notifyNewLeads, notifLoaded, canEdit]);
 
   // Logo/favicon callbacks
   const handleLogoUploaded = useCallback((url: string | null) => {
@@ -504,7 +533,50 @@ export function SettingsPageClient({ org, canEdit, userName }: SettingsPageClien
       {/* Section 5: Social Publishing */}
       <SocialSettingsSection canEdit={canEdit} />
 
-      {/* Section 6: Plan & Limits (read-only) */}
+      {/* Section 6: Notifications */}
+      <GlassCard>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-text-primary">
+            Notificaciones
+          </h2>
+          <SaveIndicator saving={notifSaving} saved={notifSaved} />
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-text-secondary">
+                Email de nuevos leads
+              </p>
+              <p className="text-xs text-text-muted mt-0.5">
+                Recibir un correo electrónico cada vez que un nuevo lead se registra en tu plataforma.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={notifyNewLeads}
+              disabled={!canEdit}
+              onClick={() => canEdit && setNotifyNewLeads(!notifyNewLeads)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-transparent disabled:opacity-50 disabled:cursor-not-allowed ${
+                notifyNewLeads ? "bg-accent-blue" : "bg-white/10"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  notifyNewLeads ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="p-3 rounded-xl bg-accent-blue/5 border border-accent-blue/20 text-xs text-text-secondary">
+            Cuando está activado, todos los administradores de tu organización recibirán un email con los datos del lead (nombre, teléfono, email, fuente). Aplica para leads del formulario web, chat AI y WhatsApp.
+          </div>
+        </div>
+      </GlassCard>
+
+      {/* Section 7: Plan & Limits (read-only) */}
       <GlassCard>
         <h2 className="text-lg font-semibold text-text-primary mb-4">
           Plan y límites
