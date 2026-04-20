@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   const authResult = await getAuthContext({
     allowedRoles: ["super_admin", "org_admin"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { supabase, organizationId } = authResult;
+  const { organizationId } = authResult;
+  const adminClient = createAdminClient();
 
   const body = await request.json();
   const { action, ids } = body as { action: string; ids: string[] };
@@ -38,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   switch (action) {
     case "delete":
-      result = await supabase
+      result = await adminClient
         .from("properties")
         .delete()
         .in("id", ids)
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
       break;
 
     case "publish":
-      result = await supabase
+      result = await adminClient
         .from("properties")
         .update({ is_published: true })
         .in("id", ids)
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
       break;
 
     case "unpublish":
-      result = await supabase
+      result = await adminClient
         .from("properties")
         .update({ is_published: false })
         .in("id", ids)
@@ -63,7 +65,8 @@ export async function POST(request: NextRequest) {
   }
 
   if (result?.error) {
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    console.error("[Properties Bulk] Supabase error:", result.error.message, result.error.code);
+    return NextResponse.json({ error: "Error en la operación" }, { status: 500 });
   }
 
   return NextResponse.json({

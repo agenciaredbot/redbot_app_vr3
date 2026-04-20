@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(
   _request: NextRequest,
@@ -33,7 +34,8 @@ export async function PUT(
     allowedRoles: ["super_admin", "org_admin"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { supabase, organizationId } = authResult;
+  const { organizationId } = authResult;
+  const adminClient = createAdminClient();
 
   const body = await request.json();
 
@@ -78,7 +80,7 @@ export async function PUT(
   if (body.commission_type !== undefined) update.commission_type = body.commission_type;
   if (body.video_url !== undefined) update.video_url = body.video_url || null;
 
-  const { data, error } = await supabase
+  const { data, error } = await adminClient
     .from("properties")
     .update(update)
     .eq("id", id)
@@ -87,7 +89,8 @@ export async function PUT(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    console.error("[Properties PUT] Supabase error:", error.message, error.code);
+    return NextResponse.json({ error: "Error al actualizar la propiedad" }, { status: 500 });
   }
 
   return NextResponse.json({ property: data });
@@ -102,16 +105,18 @@ export async function DELETE(
     allowedRoles: ["super_admin", "org_admin"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { supabase, organizationId } = authResult;
+  const { organizationId } = authResult;
+  const adminClient = createAdminClient();
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from("properties")
     .delete()
     .eq("id", id)
     .eq("organization_id", organizationId);
 
   if (error) {
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    console.error("[Properties DELETE] Supabase error:", error.message, error.code);
+    return NextResponse.json({ error: "Error al eliminar la propiedad" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
