@@ -21,4 +21,4 @@ export function getAIClient(): OpenAI {
 }
 
 /** Model ID for OpenRouter — change this to switch models */
-export const AI_MODEL = "anthropic/claude-sonnet-4.5";
+export const AI_MODEL = "google/gemini-2.0-flash-001";
