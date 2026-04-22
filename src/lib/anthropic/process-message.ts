@@ -106,9 +106,11 @@ Estás respondiendo por WhatsApp. Reglas adicionales:
 
     const response = await ai.chat.completions.create({
       model: AI_MODEL,
-      max_tokens: channel === "whatsapp" ? 512 : 1024,
+      max_tokens: channel === "whatsapp" ? 1024 : 2048,
+      temperature: 0.2,
       messages: currentMessages,
       tools: agentTools,
+      tool_choice: "auto",
     });
 
     const choice = response.choices[0];

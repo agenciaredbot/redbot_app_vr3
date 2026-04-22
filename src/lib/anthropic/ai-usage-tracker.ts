@@ -24,9 +24,14 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
   // Claude via OpenRouter
   "anthropic/claude-sonnet-4.5": { inputPer1M: 3.0, outputPer1M: 15.0 },
   "anthropic/claude-sonnet-4-5-20250929": { inputPer1M: 3.0, outputPer1M: 15.0 },
-  // Gemini (for future comparison)
+  "anthropic/claude-haiku-4.5": { inputPer1M: 1.0, outputPer1M: 5.0 },
+  // Gemini
   "google/gemini-2.0-flash-001": { inputPer1M: 0.1, outputPer1M: 0.4 },
+  "google/gemini-2.5-flash": { inputPer1M: 0.3, outputPer1M: 2.5 },
+  "google/gemini-2.5-flash-lite": { inputPer1M: 0.1, outputPer1M: 0.4 },
   "google/gemini-2.5-pro-preview": { inputPer1M: 1.25, outputPer1M: 10.0 },
+  // OpenAI
+  "openai/gpt-4o-mini": { inputPer1M: 0.15, outputPer1M: 0.6 },
   // Fallback
   _default: { inputPer1M: 3.0, outputPer1M: 15.0 },
 };

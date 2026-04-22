@@ -111,9 +111,11 @@ Si el visitante pregunta sobre "esta propiedad", "este inmueble", o hace pregunt
             // Stream the response
             const response = await ai.chat.completions.create({
               model: AI_MODEL,
-              max_tokens: 1024,
+              max_tokens: 2048,
+              temperature: 0.2,
               messages: currentMessages,
               tools: agentTools,
+              tool_choice: "auto",
               stream: true,
               stream_options: { include_usage: true },
             });
