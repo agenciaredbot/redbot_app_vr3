@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * GET /api/opportunities/stats
@@ -9,9 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function GET(_request: NextRequest) {
   const authResult = await getAuthContext();
   if (authResult instanceof NextResponse) return authResult;
-  const { organizationId } = authResult;
-
-  const adminSupabase = createAdminClient();
+  const { supabase, organizationId } = authResult;
 
   // Run all counts in parallel
   const [
@@ -24,40 +21,40 @@ export async function GET(_request: NextRequest) {
     { count: activeRequests },
     { count: trustedPartners },
   ] = await Promise.all([
-    adminSupabase
+    supabase
       .from("shared_properties")
       .select("id", { count: "exact", head: true })
       .eq("requester_org_id", organizationId)
       .eq("status", "pending"),
-    adminSupabase
+    supabase
       .from("shared_properties")
       .select("id", { count: "exact", head: true })
       .eq("requester_org_id", organizationId)
       .eq("status", "approved"),
-    adminSupabase
+    supabase
       .from("shared_properties")
       .select("id", { count: "exact", head: true })
       .eq("owner_org_id", organizationId)
       .eq("status", "pending"),
-    adminSupabase
+    supabase
       .from("shared_properties")
       .select("id", { count: "exact", head: true })
       .eq("owner_org_id", organizationId)
       .eq("status", "approved"),
-    adminSupabase
+    supabase
       .from("shared_properties")
       .select("id", { count: "exact", head: true })
       .eq("requester_org_id", organizationId),
-    adminSupabase
+    supabase
       .from("shared_properties")
       .select("id", { count: "exact", head: true })
       .eq("owner_org_id", organizationId),
-    adminSupabase
+    supabase
       .from("opportunity_requests")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId)
       .eq("status", "active"),
-    adminSupabase
+    supabase
       .from("trusted_partners")
       .select("id", { count: "exact", head: true })
       .eq("org_id", organizationId),

@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   const authResult = await getAuthContext({
     allowedRoles: ["super_admin", "org_admin"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { organizationId } = authResult;
-  const adminClient = createAdminClient();
+  const { supabase: adminClient, organizationId } = authResult;
 
   const body = await request.json();
   const { action, ids } = body as { action: string; ids: string[] };

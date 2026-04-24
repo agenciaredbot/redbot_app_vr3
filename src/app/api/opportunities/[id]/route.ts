@@ -175,12 +175,11 @@ export async function GET(
 ) {
   const authResult = await getAuthContext();
   if (authResult instanceof NextResponse) return authResult;
-  const { organizationId } = authResult;
+  const { supabase, organizationId } = authResult;
 
   const { id } = await params;
-  const adminSupabase = createAdminClient();
 
-  const { data, error } = await adminSupabase
+  const { data, error } = await supabase
     .from("shared_properties")
     .select(
       `

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { hasFeatureForOrg } from "@/lib/plans/feature-gate";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin"; // needed for cross-org org lookup in POST
 
 /**
  * GET /api/opportunities/partners
@@ -11,7 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function GET(_request: NextRequest) {
   const authResult = await getAuthContext();
   if (authResult instanceof NextResponse) return authResult;
-  const { organizationId } = authResult;
+  const { supabase, organizationId } = authResult;
 
   // Feature gate
   const featureCheck = await hasFeatureForOrg(organizationId, "opportunitiesNetwork");
@@ -22,17 +22,15 @@ export async function GET(_request: NextRequest) {
     );
   }
 
-  const adminSupabase = createAdminClient();
-
   // Get partners where this org is the one who set up the relationship
-  const { data: myPartners, error: err1 } = await adminSupabase
+  const { data: myPartners, error: err1 } = await supabase
     .from("trusted_partners")
     .select("*, partner_org:organizations!trusted_partners_partner_org_id_fkey(name, slug)")
     .eq("org_id", organizationId)
     .order("created_at", { ascending: false });
 
   // Also get orgs that have trusted THIS org (incoming trust)
-  const { data: trustedByOthers, error: err2 } = await adminSupabase
+  const { data: trustedByOthers, error: err2 } = await supabase
     .from("trusted_partners")
     .select("*, org:organizations!trusted_partners_org_id_fkey(name, slug)")
     .eq("partner_org_id", organizationId)
@@ -59,7 +57,7 @@ export async function POST(request: NextRequest) {
     allowedRoles: ["super_admin", "org_admin"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { organizationId } = authResult;
+  const { supabase, organizationId } = authResult;
 
   // Feature gate
   const featureCheck = await hasFeatureForOrg(organizationId, "opportunitiesNetwork");
@@ -84,9 +82,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Use admin client to verify partner org exists (cross-org read)
   const adminSupabase = createAdminClient();
-
-  // Verify partner org exists
   const { data: partnerOrg } = await adminSupabase
     .from("organizations")
     .select("id, name")
@@ -97,8 +94,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
   }
 
-  // Upsert: update if exists, insert if not
-  const { data, error } = await adminSupabase
+  // Upsert scoped to own org
+  const { data, error } = await supabase
     .from("trusted_partners")
     .upsert(
       {
@@ -130,7 +127,7 @@ export async function DELETE(request: NextRequest) {
     allowedRoles: ["super_admin", "org_admin"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { organizationId } = authResult;
+  const { supabase, organizationId } = authResult;
 
   const { searchParams } = new URL(request.url);
   const partnerId = searchParams.get("id");
@@ -139,9 +136,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "id es requerido" }, { status: 400 });
   }
 
-  const adminSupabase = createAdminClient();
-
-  const { error } = await adminSupabase
+  const { error } = await supabase
     .from("trusted_partners")
     .delete()
     .eq("id", partnerId)

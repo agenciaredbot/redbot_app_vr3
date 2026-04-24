@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(
   _request: NextRequest,
@@ -34,8 +33,7 @@ export async function PUT(
     allowedRoles: ["super_admin", "org_admin"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { organizationId } = authResult;
-  const adminClient = createAdminClient();
+  const { supabase, organizationId } = authResult;
 
   const body = await request.json();
 
@@ -80,7 +78,7 @@ export async function PUT(
   if (body.commission_type !== undefined) update.commission_type = body.commission_type;
   if (body.video_url !== undefined) update.video_url = body.video_url || null;
 
-  const { data, error } = await adminClient
+  const { data, error } = await supabase
     .from("properties")
     .update(update)
     .eq("id", id)
@@ -105,10 +103,9 @@ export async function DELETE(
     allowedRoles: ["super_admin", "org_admin"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { organizationId } = authResult;
-  const adminClient = createAdminClient();
+  const { supabase, organizationId } = authResult;
 
-  const { error } = await adminClient
+  const { error } = await supabase
     .from("properties")
     .delete()
     .eq("id", id)

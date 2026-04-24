@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { hasFeatureForOrg } from "@/lib/plans/feature-gate";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin"; // needed for cross-org active requests listing in GET
 
 /**
  * GET /api/opportunities/requests
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     allowedRoles: ["super_admin", "org_admin", "org_agent"],
   });
   if (authResult instanceof NextResponse) return authResult;
-  const { userId, organizationId } = authResult;
+  const { supabase, userId, organizationId } = authResult;
 
   // Feature gate
   const featureCheck = await hasFeatureForOrg(organizationId, "opportunitiesNetwork");
@@ -112,9 +112,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const adminSupabase = createAdminClient();
-
-  const { data, error } = await adminSupabase
+  const { data, error } = await supabase
     .from("opportunity_requests")
     .insert({
       organization_id: organizationId,
