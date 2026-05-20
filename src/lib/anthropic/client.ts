@@ -21,4 +21,4 @@ export function getAIClient(): OpenAI {
 }
 
 /** Model ID for OpenRouter — change this to switch models */
-export const AI_MODEL = "anthropic/claude-haiku-3-5";
+export const AI_MODEL = "anthropic/claude-3-5-haiku";
